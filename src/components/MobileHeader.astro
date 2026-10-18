@@ -1,0 +1,42 @@
+---
+import { shop } from '../lib/config';
+
+export type MobileHeaderSpec =
+  | { kind: 'brand' }
+  | { kind: 'plain' }
+  | { kind: 'b2b' }
+  | { kind: 'none' }
+  | { kind: 'title'; title: string; back?: string; backLabel?: string; extra?: string; action?: { icon: string; label: string; href?: string; attr?: string; data?: Record<string, string>; on?: boolean } };
+
+interface Props {
+  spec: MobileHeaderSpec;
+}
+const { spec } = Astro.props;
+---
+{spec.kind === 'brand' && (
+  <header class="m-hdr m-only">
+    <a class="logo" href="/"><img src="/images/logo.png" alt="" width="22" height="20" />PALADA</a>
+    <a class="hbtn sp" href={`tel:${shop.wholesaleTel}`} aria-label="Позвонить, опт"><i class="ic ic-phone"></i></a>
+    <button class="hbtn" type="button" aria-label="Меню" data-menu-open><i class="ic ic-menu"></i></button>
+  </header>
+)}
+{spec.kind === 'plain' && (
+  <header class="m-hdr m-only"><a class="logo" href="/"><img src="/images/logo.png" alt="" width="22" height="20" />PALADA</a></header>
+)}
+{spec.kind === 'b2b' && (
+  <header class="m-hdr m-only">
+    <a class="logo" href="/"><img src="/images/logo.png" alt="" width="22" height="20" />PALADA</a>
+    <span class="pl-badge pl-badge--accent sp" style="margin-right: 4px;"><i class="ic ic-store ic-16"></i>Опт</span>
+    <a class="hbtn" href={`tel:${shop.wholesaleTel}`} aria-label="Позвонить менеджеру"><i class="ic ic-phone"></i></a>
+  </header>
+)}
+{spec.kind === 'title' && (
+  <div class="m-title m-only">
+    {spec.back ? <a class="hbtn" href={spec.back} aria-label={spec.backLabel || 'Назад'} data-back><i class="ic ic-chev-l"></i></a> : <span style="width: 8px;"></span>}
+    <span class="grow">{spec.title}</span>
+    {spec.extra && <span class="xs muted" style="padding-right: 8px;">{spec.extra}</span>}
+    {spec.action && (spec.action.href
+      ? <a class="hbtn" href={spec.action.href} aria-label={spec.action.label}><i class={`ic ic-${spec.action.icon}`}></i></a>
+      : <button class={`hbtn ${spec.action.on ? 'is-on' : ''}`} type="button" aria-label={spec.action.label} {...(spec.action.attr ? { [spec.action.attr]: '' } : {})} {...(spec.action.data || {})}><i class={`ic ic-${spec.action.icon}`}></i></button>)}
+  </div>
+)}

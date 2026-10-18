@@ -1,0 +1,173 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import { categories, listProducts } from '../../lib/catalog';
+import { getCart, cartQtyMap } from '../../lib/cart';
+import { imageUrl } from '../../lib/images';
+import { rub, plural } from '../../lib/format';
+
+if (!Astro.locals.company) return Astro.redirect(Astro.locals.user ? '/b2b/register' : '/b2b');
+const sp = Astro.url.searchParams;
+const q = (sp.get('q') || '').trim().slice(0, 80);
+const cat = sp.get('cat') || '';
+const view = sp.get('view') === 'grid' ? 'grid' : 'list';
+const cats = categories();
+const { items } = listProducts({ category: cat || undefined, q: q || undefined, sort: 'popular' });
+const products = items.filter((p) => p.wholesale_price);
+const qty = cartQtyMap(Astro.locals);
+const cart = getCart(Astro.locals, 'b2b');
+const link = (patch: Record<string, string | null>) => {
+  const u = new URLSearchParams(sp);
+  for (const [k, v] of Object.entries(patch)) v ? u.set(k, v) : u.delete(k);
+  const s = u.toString();
+  return '/b2b/catalog' + (s ? `?${s}` : '');
+};
+const boxes = (n: number) => `${n} ${plural(n, ['коробка', 'коробки', 'коробок'])}`;
+const meta = (p: (typeof products)[number]) => (p.washes ? `${p.variant} · ${p.washes} стирок` : p.sku && p.slug === 'sredstvo-dlya-vannyh' ? `${p.variant} · арт. ${p.sku}` : p.variant);
+const shortName = (p: (typeof products)[number]) => `${p.name}, ${p.variant.replace(' литров', ' л').replace(' литра', ' л').replace(' литр', ' л').replace('Зелёное яблоко · ', '')}`;
+---
+<Shop title="Оптовый каталог" nav="catalog" tab="catalog" noindex mobileHeader={{ kind: 'b2b' }} fabsClass="up b2b-fabs" pageClass="has-sticky" footer={false}>
+  <main class="wrap" style="padding-bottom: 140px;" data-swap="b2b">
+    <nav class="crumbs"><a href="/">Главная</a><i class="ic ic-chev-r"></i><span>Каталог</span></nav>
+    <div class="row between d-only" style="align-items: flex-end; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
+      <div class="row g16" style="align-items: baseline;"><h1 class="t-h2">Каталог</h1><span class="pl-badge pl-badge--accent"><i class="ic ic-coin ic-16"></i>Оптовые цены</span></div>
+      <div class="row g12">
+        <form action="/b2b/catalog" method="get" role="search" style="position: relative; width: 300px;">
+          {cat && <input type="hidden" name="cat" value={cat} />}{view === 'grid' && <input type="hidden" name="view" value="grid" />}
+          <i class="ic ic-search ic-20 muted" style="position: absolute; left: 14px; top: 14px;"></i><input class="pl-input" style="padding-left: 44px;" name="q" value={q} placeholder="Название или артикул" aria-label="Поиск" />
+        </form>
+        <div class="seg" style="width: 200px;"><a class={view === 'grid' ? 'on' : ''} href={link({ view: 'grid' })}><i class="ic ic-grid ic-18"></i>Плитка</a><a class={view === 'list' ? 'on' : ''} href={link({ view: null })}><i class="ic ic-menu ic-18"></i>Список</a></div>
+      </div>
+    </div>
+    <div class="m-only col g12" style="padding-top: 20px; padding-bottom: 12px;">
+      <div class="row g12" style="align-items: baseline;"><h1 class="m-h2">Каталог</h1><span class="sm muted">оптовые цены</span></div>
+      <form action="/b2b/catalog" method="get" role="search" style="position: relative;">{cat && <input type="hidden" name="cat" value={cat} />}<i class="ic ic-search ic-20 muted" style="position: absolute; left: 14px; top: 14px;"></i><input class="pl-input" style="padding-left: 44px;" name="q" value={q} placeholder="Название или артикул" aria-label="Поиск" /></form>
+    </div>
+    <div class="chips d-only" style="margin-bottom: 24px;">
+      <a class={`chip ${!cat ? 'on' : ''}`} href={link({ cat: null })}>Все</a>
+      {cats.map((c) => <a class={`chip ${cat === c.slug ? 'on' : ''}`} href={link({ cat: c.slug })}>{c.name}</a>)}
+    </div>
+    <div class="m-scroll m-only" style="padding: 0 16px 12px; margin: 0 -16px;">
+      <a class={`chip ${!cat ? 'on' : ''}`} href={link({ cat: null })}>Все</a>
+      {cats.map((c) => <a class={`chip ${cat === c.slug ? 'on' : ''}`} href={link({ cat: c.slug })}>{c.name}</a>)}
+    </div>
+
+    {!products.length && <p class="muted" style="padding: 32px 0;">{q ? `По запросу «${q}» ничего не найдено.` : 'В этой категории пока нет оптовых позиций.'}</p>}
+
+    {products.length > 0 && view === 'list' && (
+      <div class="tbl-box d-only" style="border-radius: 8px;">
+        <table class="tbl" style="font-size: 15px;">
+          <thead><tr><th>Товар</th><th>В коробке</th><th class="num">Розница</th><th class="num">Опт, за шт.</th><th>Коробок</th><th class="num">Сумма</th></tr></thead>
+          <tbody>
+            {products.map((p) => {
+              const n = qty.get(p.id) || 0;
+              const b = Math.round(n / p.box_qty);
+              return (
+                <tr>
+                  <td><a class="row g12" href={`/product/${p.slug}`}><span class="tb-img" style="width: 56px; height: 56px;"><img src={imageUrl(p.images[0])} alt="" width="56" height="56" /></span><span class="col"><b style="font-weight: 600;">{p.name}</b><span class="sm muted">{meta(p)}</span></span></a></td>
+                  <td>{p.box_qty} шт.</td>
+                  <td class="num muted" style="text-decoration: line-through;">{rub(p.price)}</td>
+                  <td class="num"><b class="pl-price" style="font-size: 18px;">{rub(p.wholesale_price)}</b></td>
+                  <td>{!p.available ? <span class="pl-badge pl-badge--neutral">Нет в наличии</span> : b > 0 ? (<><div class="pl-qty pl-qty--sm" data-box={p.id} data-step={p.box_qty} data-max={p.stock}><button type="button" aria-label="Меньше" data-d="-1"><i class="ic ic-minus ic-18"></i></button><span>{b}</span><button type="button" aria-label="Больше" data-d="1" disabled={(b + 1) * p.box_qty > p.stock}><i class="ic ic-plus ic-18"></i></button></div><span class="xs muted">{n} шт.</span></>) : <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" data-box-add={p.id}><i class="ic ic-plus ic-18"></i>Коробка</button>}</td>
+                  <td class="num">{n ? <b style="font-weight: 600;">{rub(n * (p.wholesale_price || 0))}</b> : <span class="muted">—</span>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {products.length > 0 && view === 'grid' && (
+      <div class="grid4 d-only">
+        {products.map((p) => {
+          const n = qty.get(p.id) || 0;
+          const b = Math.round(n / p.box_qty);
+          return (
+            <article class={`pl-card ${p.available ? '' : 'is-out'}`}>
+              <a href={`/product/${p.slug}`} class="pl-card__media"><img src={imageUrl(p.images[0])} alt={p.name} loading="lazy" width="240" height="240" /><span class="pl-badge pl-badge--accent pl-card__tag">{p.box_qty} шт. в коробке</span></a>
+              <div class="pl-card__body">
+                <h3 class="pl-card__title"><a href={`/product/${p.slug}`}>{p.name}</a></h3>
+                <div class="pl-card__meta">{meta(p)} · розница <s>{rub(p.price)}</s></div>
+                <div class="pl-card__foot">
+                  <div><span class="pl-price">{rub(p.wholesale_price)}</span><span class="xs muted" style="display: block;">за шт.</span></div>
+                  {!p.available ? <button class="pl-btn pl-btn--secondary pl-btn--sm is-disabled" disabled>Нет</button> : b > 0
+                    ? <div class="pl-qty pl-qty--sm" data-box={p.id} data-step={p.box_qty} data-max={p.stock}><button type="button" aria-label="Меньше" data-d="-1"><i class="ic ic-minus ic-18"></i></button><span>{b}</span><button type="button" aria-label="Больше" data-d="1" disabled={(b + 1) * p.box_qty > p.stock}><i class="ic ic-plus ic-18"></i></button></div>
+                    : <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" data-box-add={p.id}><i class="ic ic-plus ic-18"></i>Коробка</button>}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    )}
+
+    <div class="col m-only">
+      {products.map((p) => {
+        const n = qty.get(p.id) || 0;
+        const b = Math.round(n / p.box_qty);
+        return (
+          <div class="line" style="grid-template-columns: 72px 1fr;">
+            <a class="line-img" style="width: 72px; height: 72px;" href={`/product/${p.slug}`}><img src={imageUrl(p.images[0])} alt="" width="72" height="72" /></a>
+            <div class="col g8">
+              <div class="col"><b class="t-h4" style="font-size: 15px;">{shortName(p)}</b><span class="xs muted">в коробке {p.box_qty} шт. · розница <s>{rub(p.price)}</s></span></div>
+              <div class="row between">
+                <span class="col" style="line-height: 1.2;"><b class="pl-price" style="font-size: 18px;">{rub(p.wholesale_price)}</b><span class="xs muted">за шт.</span></span>
+                {!p.available ? <span class="pl-badge pl-badge--neutral">Нет в наличии</span> : b > 0
+                  ? <div class="pl-qty pl-qty--sm" data-box={p.id} data-step={p.box_qty} data-max={p.stock}><button type="button" aria-label="Меньше" data-d="-1"><i class="ic ic-minus ic-18"></i></button><span>{b} кор.</span><button type="button" aria-label="Больше" data-d="1" disabled={(b + 1) * p.box_qty > p.stock}><i class="ic ic-plus ic-18"></i></button></div>
+                  : <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" data-box-add={p.id}><i class="ic ic-plus ic-18"></i>Коробка</button>}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+    <p class="sm muted" style="margin-top: 12px;">Заказ кратен коробке. Нужно другое количество — напишите менеджеру.</p>
+
+    <div class="dock d-only" hidden={!cart.positions}>
+      <div class="wrap row g32">
+        <span class="col" style="line-height: 1.25;"><span class="sm muted">{cart.positions} {plural(cart.positions, ['позиция', 'позиции', 'позиций'])} · {boxes(cart.boxes)} · {cart.count} шт.</span><b class="pl-price">{rub(cart.itemsTotal)}</b></span>
+        {cart.savings > 0 && <span class="sm save row g8"><i class="ic ic-tag ic-18"></i>Экономия к рознице — {rub(cart.savings)}</span>}
+        <span class="grow"></span>
+        <a class="pl-btn pl-btn--primary" href="/b2b/checkout" style="padding: 0 32px;">Оформить заказ</a>
+      </div>
+    </div>
+    <div class="m-sticky m-only" hidden={!cart.positions}>
+      <div class="col" style="line-height: 1.2;"><span class="xs muted">{cart.boxes} кор. · {cart.count} шт.</span><b style="font-size: 20px; font-weight: 600; color: var(--ink-strong);">{rub(cart.itemsTotal)}</b></div>
+      <a class="pl-btn pl-btn--primary grow" href="/b2b/checkout">Оформить</a>
+    </div>
+  </main>
+</Shop>
+<style is:global>
+  @media (min-width: 768px) { .b2b-fabs { bottom: 104px !important; } }
+  .tbl a.row { text-decoration: none; }
+  .tbl a.row:hover b { color: var(--accent-ink); }
+</style>
+<script>
+  import { api, swap, setCartCount, toast } from '../../scripts/app';
+  const refresh = () => swap('[data-swap="b2b"]');
+  document.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const add = t.closest<HTMLButtonElement>('[data-box-add]');
+    if (add) {
+      add.classList.add('is-loading');
+      const r = await api('/api/cart', { action: 'add', id: Number(add.dataset.boxAdd), qty: 1 });
+      if (!r.ok) toast(r.error, 'error');
+      else setCartCount(r.count);
+      return refresh();
+    }
+    const step = t.closest<HTMLButtonElement>('[data-box] [data-d]');
+    if (step) {
+      const box = step.closest<HTMLElement>('[data-box]')!;
+      const span = box.querySelector('span')!;
+      const n = parseInt(span.textContent || '0', 10) + Number(step.dataset.d);
+      box.classList.add('is-busy');
+      const r = await api('/api/cart', { action: 'set', id: Number(box.dataset.box), qty: Math.max(0, n) * Number(box.dataset.step) });
+      if (!r.ok) toast(r.error, 'error');
+      else {
+        setCartCount(r.count);
+        if (r.note) toast(r.note);
+      }
+      return refresh();
+    }
+  });
+</script>

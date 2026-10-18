@@ -1,0 +1,69 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import { shop } from '../../lib/config';
+import { productBySlug } from '../../lib/catalog';
+import { rub } from '../../lib/format';
+
+const isB2b = Boolean(Astro.locals.company);
+const sample = productBySlug('gel-dlya-stirki-cvetnogo');
+---
+<Shop title="Оптовым покупателям" description="Бытовая химия PALADA оптом напрямую с завода: регистрация по ИНН, оптовые цены сразу, оплата по счёту или картой, доставка в ПВЗ Ozon и Wildberries." nav="b2b">
+  <section class="hero">
+    <div class="wrap" style="min-height: 520px;">
+      <div class="col g24" style="padding: 64px 0;">
+        <span class="kicker"><i class="ic ic-store ic-18"></i>Для компаний и ИП</span>
+        <h1 class="t-h1">Бытовая химия оптом — напрямую с завода</h1>
+        <p style="font-size: 18px; max-width: 520px;" class="muted">Зарегистрируйте компанию по ИНН — оптовые цены откроются сразу. Оплата по счёту или картой, доставка в ПВЗ Ozon и Wildberries.</p>
+        <div class="row g16" style="margin-top: 8px; flex-wrap: wrap;">
+          {isB2b ? (
+            <a class="pl-btn pl-btn--primary" href="/b2b/catalog" style="padding: 0 32px;">Оптовый каталог<i class="ic ic-arrow-r ic-20"></i></a>
+          ) : (
+            <>
+              <a class="pl-btn pl-btn--primary" href="/b2b/register" style="padding: 0 32px;">Зарегистрировать компанию</a>
+              <a class="pl-btn pl-btn--secondary" href="/login?next=/b2b/catalog">Войти</a>
+            </>
+          )}
+        </div>
+      </div>
+      {sample && (
+        <div class="box col g16" style="padding: 32px;">
+          <span class="sm muted">Пример: {sample.name}, 5 л</span>
+          <div class="row between" style="padding: 12px 0; border-bottom: 1px solid var(--line);"><span>Розничная цена</span><span class="muted" style="text-decoration: line-through; text-decoration-color: var(--warm);">{rub(sample.price)}</span></div>
+          <div class="row between" style="padding: 12px 0; border-bottom: 1px solid var(--line);"><span class="row g8"><b style="font-weight: 600;">Оптовая цена</b><span class="pl-badge pl-badge--accent">от {sample.box_qty} шт.</span></span><b class="pl-price pl-price--lg">{isB2b ? rub(sample.wholesale_price) : rub(sample.wholesale_price)}</b></div>
+          <div class="row between" style="padding: 12px 0;"><span class="muted">Кратность заказа</span><span>коробка · {sample.box_qty} шт.</span></div>
+          <p class="xs muted">{isB2b ? 'Оптовые цены уже действуют в вашем каталоге.' : 'Цены видны после регистрации компании.'}</p>
+        </div>
+      )}
+    </div>
+  </section>
+  <section class="sec">
+    <div class="wrap col g48">
+      <h2 class="t-h2">Почему с нами удобно</h2>
+      <div class="grid4">
+        <div class="adv"><span class="adv-ic"><i class="ic ic-coin ic-28"></i></span><h3 class="t-h3">Цены завода</h3><p class="muted">Без посредников и наценок маркетплейсов.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-doc ic-28"></i></span><h3 class="t-h3">Счёт и документы</h3><p class="muted">Счёт на юрлицо формируется сразу, закрывающие документы — в кабинете.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-store ic-28"></i></span><h3 class="t-h3">Доставка в ПВЗ</h3><p class="muted">Ozon или Wildberries — в любой пункт выдачи.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-shield ic-28"></i></span><h3 class="t-h3">«Честный знак»</h3><p class="muted">Вся продукция промаркирована — можно продавать дальше.</p></div>
+      </div>
+    </div>
+  </section>
+  <section class="sec alt">
+    <div class="wrap col g48">
+      <h2 class="t-h2">Как начать</h2>
+      <div class="steps-list">
+        <div class="box col g12"><span class="step-n">1</span><h3 class="t-h3">Регистрация по ИНН</h3><p class="muted">Реквизиты подтянутся автоматически — останется указать контактное лицо.</p></div>
+        <div class="box col g12"><span class="step-n">2</span><h3 class="t-h3">Оптовые цены сразу</h3><p class="muted">Каталог переключится на оптовые цены, корзина — на заказ от коробки.</p></div>
+        <div class="box col g12"><span class="step-n">3</span><h3 class="t-h3">Счёт или карта</h3><p class="muted">Скачайте счёт на компанию или оплатите картой и через СБП.</p></div>
+      </div>
+      <div class="box-line row g32 b2b-cta" style="padding: 32px 40px; background: var(--accent-tint); border-color: transparent;">
+        <div class="col g8 grow"><h3 class="t-h3" style="font-size: 24px;">Крупная партия или особые условия?</h3><p class="muted">Позвоните или напишите — менеджер подготовит предложение.</p></div>
+        <a class="pl-btn pl-btn--secondary" href={`tel:${shop.wholesaleTel}`} style="background: var(--surface);"><i class="ic ic-phone ic-20"></i>{shop.wholesalePhone}</a>
+        <a class="pl-btn pl-btn--primary" href={shop.whatsapp}><i class="ic ic-wa ic-20"></i>WhatsApp</a>
+      </div>
+    </div>
+  </section>
+</Shop>
+<style is:global>
+  @media (max-width: 1023px) { .b2b-cta { flex-wrap: wrap; } }
+  @media (max-width: 767px) { .b2b-cta { padding: 24px !important; flex-direction: column; align-items: stretch; gap: 12px; } }
+</style>

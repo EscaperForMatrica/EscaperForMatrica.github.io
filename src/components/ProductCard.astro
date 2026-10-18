@@ -1,0 +1,46 @@
+---
+import type { Product } from '../lib/catalog';
+import { cardMeta } from '../lib/catalog';
+import { imageUrl } from '../lib/images';
+import { rub } from '../lib/format';
+
+interface Props {
+  p: Product;
+  inCart?: boolean;
+  fav?: boolean;
+  /** Компактная карточка для горизонтальной ленты на мобайле — без сердечка и старой цены. */
+  compact?: boolean;
+  short?: boolean;
+  outLabel?: string;
+  favRemove?: boolean;
+  style?: string;
+}
+const { p, inCart = false, fav = false, compact = false, short = false, outLabel = 'Сообщить', favRemove = false, style } = Astro.props;
+const href = `/product/${p.slug}`;
+const out = !p.available;
+---
+<article class={`pl-card ${out ? 'is-out' : ''}`} style={style}>
+  <a href={href} class="pl-card__media" tabindex="-1" aria-hidden="true">
+    <img src={imageUrl(p.images[0])} alt={`${p.name}${p.variant ? ', ' + p.variant : ''}`} loading="lazy" width="240" height="240" />
+    {out
+      ? <span class="pl-badge pl-badge--neutral pl-card__tag">Нет в наличии</span>
+      : !compact && p.discount > 0 && <span class="pl-badge pl-badge--discount pl-card__tag">−{p.discount}%</span>}
+  </a>
+  {!compact && (
+    <button class={`pl-icon-btn pl-card__fav ${fav ? 'is-on' : ''}`} type="button" data-fav={p.id} data-fav-remove={favRemove ? '' : undefined} aria-pressed={fav ? 'true' : 'false'} aria-label={fav ? 'Убрать из избранного' : 'В избранное'}>
+      <i class={`ic ${fav ? 'ic-heart-fill' : 'ic-heart'} ic-20`}></i>
+    </button>
+  )}
+  <div class="pl-card__body">
+    <h3 class="pl-card__title"><a href={href}>{p.name}</a></h3>
+    <div class="pl-card__meta">{cardMeta(p, short)}</div>
+    <div class="pl-card__foot">
+      <div><span class="pl-price">{rub(p.price)}</span>{!compact && !out && p.old_price && p.old_price > (p.price ?? 0) && <span class="pl-price-old">{rub(p.old_price)}</span>}</div>
+      {out
+        ? <button class="pl-btn pl-btn--secondary pl-btn--sm is-disabled" type="button" disabled>{outLabel}</button>
+        : inCart
+          ? <a class="pl-btn pl-btn--secondary pl-btn--sm" href="/cart"><i class="ic ic-check ic-18"></i>В корзине</a>
+          : <button class="pl-btn pl-btn--primary pl-btn--sm" type="button" data-add={p.id}>В корзину</button>}
+    </div>
+  </div>
+</article>

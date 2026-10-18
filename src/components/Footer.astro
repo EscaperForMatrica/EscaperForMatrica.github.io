@@ -1,0 +1,29 @@
+---
+import { shop } from '../lib/config';
+interface Props {
+  mobile?: boolean;
+}
+const { mobile = true } = Astro.props;
+const year = new Date().getFullYear();
+---
+<footer class="ftr d-ftr">
+  <div class="wrap">
+    <div class="ftr-top">
+      <div class="col g12"><a class="logo" href="/"><img src="/images/logo.png" alt="" width="24" height="21" />PALADA</a><p>Концентрированная бытовая химия напрямую с завода.</p></div>
+      <div><h4>Покупателям</h4><ul><li><a href="/catalog">Каталог</a></li><li><a href="/about">О нас</a></li><li><a href="/blog">Блог</a></li><li><a href="/account">Личный кабинет</a></li></ul></div>
+      <div><h4>Документы</h4><ul><li><a href="/legal/offer">Договор-оферта</a></li><li><a href="/legal/privacy">Политика конфиденциальности</a></li><li><a href="/legal/consent">Согласие на обработку ПДн</a></li><li><a href="/legal/cookies">Политика cookie</a></li></ul></div>
+      <div><h4>Контакты</h4><ul><li><a class="ftr-tel" href={`tel:${shop.wholesaleTel}`}>{shop.wholesalePhone}</a><br />оптовые заказы</li><li><a class="ftr-tel" href={`tel:${shop.supportTel}`}>{shop.supportPhone}</a><br />WhatsApp и звонки</li></ul></div>
+    </div>
+    <div class="ftr-bottom"><span>© {year} {shop.legalName} · ИНН {shop.inn} · ОГРН {shop.ogrn}</span><span>Оплата картой и через СБП</span></div>
+  </div>
+</footer>
+{mobile && (
+  <footer class="ftr m-only" style="padding: 40px 16px 32px;">
+    <div class="col g24">
+      <a class="logo" href="/"><img src="/images/logo.png" alt="" width="22" height="20" />PALADA</a>
+      <div class="col g8"><a class="ftr-tel" href={`tel:${shop.wholesaleTel}`}>{shop.wholesalePhone}</a><span>оптовые заказы</span><a class="ftr-tel" href={`tel:${shop.supportTel}`}>{shop.supportPhone}</a><span>WhatsApp и звонки</span></div>
+      <div class="col g8"><a href="/legal/offer">Договор-оферта</a><a href="/legal/privacy">Политика конфиденциальности</a><a href="/legal/consent">Согласие на обработку ПДн</a><a href="/legal/cookies">Политика cookie</a></div>
+      <p class="xs">© {year} {shop.legalName}<br />ИНН {shop.inn} · ОГРН {shop.ogrn}</p>
+    </div>
+  </footer>
+)}

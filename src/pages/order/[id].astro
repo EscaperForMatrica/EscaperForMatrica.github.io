@@ -1,0 +1,150 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import PayModal from '../../components/PayModal.astro';
+import { getOrder, canView, orderEvents, itemsCount, PAY_METHOD, type OrderStatus } from '../../lib/orders';
+import { lastPayment, getPayment, syncPayment } from '../../lib/payments';
+import { rub, humanDateTime, etaRangeLong, parseDate } from '../../lib/format';
+import { shop } from '../../lib/config';
+import { getPoint } from '../../lib/delivery';
+
+const order = getOrder(Number(Astro.params.id));
+if (!order || !canView(order, Astro.locals)) return Astro.rewrite('/404');
+
+// Возврат из ЮKassa: сверяем статус платежа
+const pid = Number(Astro.url.searchParams.get('payment'));
+let pay = pid ? getPayment(pid) : lastPayment(order.id);
+if (pay && pay.order_id === order.id && pay.status === 'pending' && pay.provider === 'yookassa') {
+  await syncPayment(pay);
+  pay = getPayment(pay.id);
+}
+const o = getOrder(order.id)!;
+if (o.kind === 'b2b' && o.payment_method === 'invoice') return Astro.redirect(`/b2b/account?order=${o.id}`);
+
+const paid = !['pending', 'cancelled'].includes(o.status);
+const waiting = o.status === 'pending' && pay?.status === 'pending' && pay.provider !== 'test';
+const failed = o.status === 'pending' && !waiting;
+const cancelled = o.status === 'cancelled';
+const count = itemsCount(o.id);
+const events = orderEvents(o.id);
+const paidAt = events.find((e) => e.status === 'paid')?.at || o.paid_at;
+const isWb = o.delivery_type === 'wb';
+const pvz = getPoint(o.pvz_id);
+const etaLong = pvz ? (() => {
+  const from = parseDate(o.paid_at || o.created_at) || new Date();
+  return etaRangeLong(pvz.days[0], pvz.days[1], from);
+})() : '';
+const deliveryText = isWb ? `ПВЗ Wildberries, ${o.pvz_address.replace(/^г\.\s*[^,]+,\s*/, '')}` : `ПВЗ Ozon, ${o.pvz_address}`;
+const order_: OrderStatus[] = ['paid', 'assembling', 'shipping', 'pvz', 'received'];
+const idx = order_.indexOf(o.status as OrderStatus);
+const steps = isWb
+  ? [
+      { key: 'paid', icon: 'check', title: 'Оплачен', sub: humanDateTime(paidAt) },
+      { key: 'assembling', icon: 'box', title: 'Собираем заказ', sub: 'Отправку в Wildberries оформит менеджер' },
+      { key: 'shipping', icon: 'truck', title: o.track ? `Трек-номер ${o.track}` : 'Трек-номер', sub: o.track ? 'Заказ передан в доставку' : 'Появится в личном кабинете' },
+    ]
+  : [
+      { key: 'paid', icon: 'check', title: 'Оплачен', sub: humanDateTime(paidAt) },
+      { key: 'assembling', icon: 'box', title: 'Собираем заказ на заводе', sub: 'Сообщим, когда отправим' },
+      { key: 'shipping', icon: 'truck', title: 'Передадим в доставку', sub: o.track ? `Трек-номер ${o.track}` : 'Трек-номер появится в личном кабинете' },
+      { key: 'pvz', icon: 'store', title: 'Ждёт в пункте выдачи', sub: etaLong ? `Пришлём уведомление, ожидаемо ${etaLong}` : 'Пришлём уведомление' },
+    ];
+// «Оплачен» → текущий шаг — сборка
+const curIdx = Math.max(1, idx);
+const stepState = (i: number) => (i < curIdx || o.status === 'received' ? 'done' : i === curIdx ? 'cur' : '');
+const accountHref = Astro.locals.user ? '/account' : `/login?next=${encodeURIComponent('/account')}`;
+const title = paid ? `Заказ № ${o.id} оплачен` : cancelled ? `Заказ № ${o.id} отменён` : waiting ? 'Проверяем оплату' : 'Оплата не прошла';
+---
+<Shop title={title} header="compact" headerSurface tool={paid ? 'account' : null} pageClass="alt" noindex mobileHeader={{ kind: 'plain' }} tab={paid ? null : 'cart'} footer={false} fabs={!paid} cookie={false}>
+  {waiting && <meta slot="head" http-equiv="refresh" content="3" />}
+  <main class="wrap order-state" style="padding: 72px 32px 96px; display: flex; justify-content: center;">
+    {paid ? (
+      <div class="box col g32 state-box" style="width: 720px; padding: 48px;">
+        <div class="col g16" style="align-items: center; text-align: center;">
+          <span class="state-ic state-ok"><i class="ic ic-check ic-40"></i></span>
+          <h1 class="t-h2" style="font-size: 36px;">Заказ № {o.id} оплачен</h1>
+          <p class="muted">{o.email ? <>Спасибо! Чек отправили на {o.email}.</> : 'Спасибо! Чек придёт по СМС.'}</p>
+        </div>
+        <div class="row between g24 d-only" style="background: var(--surface-alt); border-radius: 8px; padding: 20px 24px; align-items: flex-start;">
+          <div class="col g4"><span class="xs muted">Оплачено</span><b class="pl-price">{rub(o.total)}</b></div>
+          <div class="col g4"><span class="xs muted">Способ</span><span>{PAY_METHOD[o.payment_method] || '—'}</span></div>
+          <div class="col g4" style="max-width: 300px;"><span class="xs muted">Доставка</span><span>{deliveryText}</span></div>
+        </div>
+        <div class="col g8 m-only" style="background: var(--surface-alt); border-radius: 8px; padding: 16px;">
+          <div class="sum-row"><span class="muted">Оплачено {o.payment_method === 'sbp' ? 'через СБП' : 'картой'}</span><b class="strong">{rub(o.total)}</b></div>
+          <div class="sum-row"><span class="muted">{isWb ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}</span><span style="text-align: right;">{o.pvz_address.replace(/^г\.\s*[^,]+,\s*/, '')}</span></div>
+        </div>
+        <div class="col g16">
+          <h2 class="t-h3 d-only">Что дальше</h2>
+          <div class="timeline">
+            {steps.map((s, i) => (
+              <div class={`tl ${stepState(i)}`}><span class="tl-dot"><i class={`ic ic-${stepState(i) === 'done' ? 'check' : s.icon} ic-18`}></i></span><div class="col"><b style="font-weight: 600;">{s.title}</b><span class="sm muted">{s.sub}</span></div></div>
+            ))}
+          </div>
+        </div>
+        <div class="row g12 state-actions">
+          <a class="pl-btn pl-btn--primary grow" href={accountHref}>В личный кабинет</a>
+          <a class="pl-btn pl-btn--secondary" href="/catalog">Продолжить покупки</a>
+        </div>
+      </div>
+    ) : waiting ? (
+      <div class="box col g24" style="width: 600px; padding: 48px; align-items: center; text-align: center;">
+        <span class="state-ic state-empty"><i class="ic ic-clock ic-40"></i></span>
+        <h1 class="t-h2" style="font-size: 36px;">Проверяем оплату</h1>
+        <p class="muted" style="max-width: 440px;">Банк ещё подтверждает платёж по заказу № {o.id}. Страница обновится сама — обычно это занимает несколько секунд.</p>
+        <a class="pl-btn pl-btn--secondary" href={`/order/${o.id}`}><i class="ic ic-refresh ic-20"></i>Обновить</a>
+      </div>
+    ) : cancelled ? (
+      <div class="box col g24" style="width: 600px; padding: 48px; align-items: center; text-align: center;">
+        <span class="state-ic state-empty"><i class="ic ic-close ic-40"></i></span>
+        <h1 class="t-h2" style="font-size: 36px;">Заказ № {o.id} отменён</h1>
+        <p class="muted" style="max-width: 440px;">Если это ошибка — напишите нам, разберёмся.</p>
+        <a class="pl-btn pl-btn--primary" href="/catalog">В каталог</a>
+      </div>
+    ) : (
+      <div class="box col g24 state-box" style="width: 600px; padding: 48px; align-items: center; text-align: center;">
+        <span class="state-ic state-err"><i class="ic ic-close ic-40"></i></span>
+        <h1 class="t-h2" style="font-size: 36px;">Оплата не прошла</h1>
+        <p class="muted" style="max-width: 440px;">{pay ? <>Банк отклонил платёж. Деньги не списаны, заказ № {o.id} сохранён — можно попробовать ещё раз или выбрать другой способ.</> : <>Заказ № {o.id} сохранён и ждёт оплаты.</>}</p>
+        <div class="pl-note pl-note--error" style="text-align: left; width: 100%;"><i class="ic ic-alert"></i><span class="d-only">Частые причины: недостаточно средств, лимит на онлайн-покупки или неверный код из СМС.</span><span class="m-only">Проверьте баланс и лимит на онлайн-покупки в приложении банка.</span></div>
+        <div class="col g12" style="width: 100%;">
+          <button class="pl-btn pl-btn--primary pl-btn--block" type="button" data-retry={o.id} data-method={pay?.method || 'card'}><i class="ic ic-refresh ic-20"></i>Попробовать снова</button>
+          <button class="pl-btn pl-btn--secondary pl-btn--block d-only" type="button" data-retry={o.id} data-method="sbp">Оплатить через СБП</button>
+          <button class="pl-btn pl-btn--secondary pl-btn--block m-only" type="button" data-other={o.id} data-total={o.total} data-count={count}>Другой способ оплаты</button>
+        </div>
+        <p class="sm muted d-only">Не получается? Напишите нам в <a class="link" href={shop.whatsapp}>WhatsApp</a> или позвоните <a class="link" href={`tel:${shop.supportTel}`}>{shop.supportPhone}</a></p>
+      </div>
+    )}
+  </main>
+  {failed && <PayModal slot="after" defaultMethod={pay?.method === 'sbp' ? 'card' : 'sbp'} />}
+</Shop>
+
+<style is:global>
+  @media (max-width: 767px) {
+    .order-state { padding: 40px 16px 120px !important; background: var(--surface); }
+    .page:has(.order-state) { background: var(--surface); }
+    .order-state .state-box { width: 100% !important; padding: 0 !important; box-shadow: none; gap: 24px !important; }
+    .order-state .state-ic { width: 72px; height: 72px; }
+    .order-state .state-ic .ic { width: 32px; height: 32px; }
+    .order-state h1 { font-size: 28px !important; }
+    .order-state .state-actions { flex-direction: column; align-items: stretch; }
+    .order-state .state-actions .pl-btn--secondary { background: transparent; border-color: transparent; height: auto; min-height: 32px; align-self: center; }
+    .order-state .tl .sm { font-size: 13px; }
+  }
+</style>
+
+<script>
+  import { api, toast } from '../../scripts/app';
+  document.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const retry = t.closest<HTMLButtonElement>('[data-retry]');
+    if (retry) {
+      retry.classList.add('is-loading');
+      const r = await api('/api/pay', { orderId: Number(retry.dataset.retry), method: retry.dataset.method });
+      if (r.ok && r.redirect) return void (location.href = r.redirect);
+      retry.classList.remove('is-loading');
+      toast(r.error || 'Не удалось перейти к оплате', 'error');
+    }
+    const other = t.closest<HTMLButtonElement>('[data-other]');
+    if (other) (window as any).palada.openPay({ orderId: Number(other.dataset.other), total: Number(other.dataset.total), count: Number(other.dataset.count) });
+  });
+</script>

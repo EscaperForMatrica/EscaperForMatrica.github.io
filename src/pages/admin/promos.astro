@@ -1,0 +1,115 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+import { promoState, promoDateRange, type Promo } from '../../lib/promo';
+import { rub, num } from '../../lib/format';
+
+const f = Astro.url.searchParams.get('f') || 'all';
+const editId = Number(Astro.url.searchParams.get('edit')) || 0;
+const all = db.all<Promo>('select * from promo_codes order by created_at desc, id desc');
+const active = all.filter((p) => promoState(p) === 'active' || promoState(p) === 'scheduled');
+const done = all.filter((p) => promoState(p) === 'expired' || promoState(p) === 'exhausted');
+const list = f === 'active' ? active : f === 'done' ? done : [...active, ...done];
+const edit = editId ? all.find((p) => p.id === editId) : undefined;
+const p = edit || { code: '', kind: 'percent', value: 10, min_total: 0, starts_at: '', ends_at: '', usage_limit: null, once_per_customer: 0 } as any;
+const STATE: Record<string, [string, string]> = {
+  active: ['pl-badge--accent', 'Активен'],
+  scheduled: ['pl-badge--neutral', 'Запланирован'],
+  exhausted: ['pl-badge--neutral', 'Лимит исчерпан'],
+  expired: ['pl-badge--neutral', 'Срок истёк'],
+};
+---
+<Admin title="Промокоды" active="promos">
+  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Промокоды</h1></div>
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+    <form class="box-line col g16" style="flex: 1 1 380px; max-width: 420px;" data-promo-form data-id={edit?.id || ''} novalidate>
+      <div class="row between"><h2 class="t-h4">{edit ? `Промокод ${edit.code}` : 'Новый промокод'}</h2>{edit && <a class="sm link" href="/admin/promos">Создать новый</a>}</div>
+      <div class="pl-field"><label class="pl-field__label" for="pc-code">Код</label><div class="pl-promo"><input class="pl-input" id="pc-code" name="code" value={p.code} placeholder="OSEN15" autocomplete="off" /><button class="pl-btn pl-btn--secondary" type="button" aria-label="Сгенерировать" data-gen><i class="ic ic-refresh ic-18"></i></button></div><span class="pl-field__hint">Латиница и цифры, покупатель вводит его в корзине</span></div>
+      <div class="col g8"><span class="pl-field__label">Тип скидки</span><div class="seg" role="radiogroup"><label><input type="radio" name="kind" value="percent" checked={p.kind === 'percent'} />Процент</label><label><input type="radio" name="kind" value="fixed" checked={p.kind === 'fixed'} />Сумма, ₽</label></div></div>
+      <div class="grid2" style="gap: 16px;">
+        <div class="pl-field"><label class="pl-field__label" for="pc-value" data-value-label>{p.kind === 'percent' ? 'Скидка, %' : 'Скидка, ₽'}</label><input class="pl-input" id="pc-value" name="value" inputmode="numeric" value={p.value} /></div>
+        <div class="pl-field"><label class="pl-field__label" for="pc-min">Мин. сумма заказа, ₽</label><input class="pl-input" id="pc-min" name="min_total" inputmode="numeric" value={p.min_total || ''} placeholder="0" /></div>
+        <div class="pl-field"><label class="pl-field__label" for="pc-from">Действует с</label><input class="pl-input" id="pc-from" name="starts_at" type="date" value={p.starts_at || ''} /></div>
+        <div class="pl-field"><label class="pl-field__label" for="pc-to">по</label><input class="pl-input" id="pc-to" name="ends_at" type="date" value={p.ends_at || ''} /></div>
+      </div>
+      <div class="pl-field"><label class="pl-field__label" for="pc-limit">Лимит использований <i>(пусто — без лимита)</i></label><input class="pl-input" id="pc-limit" name="usage_limit" inputmode="numeric" value={p.usage_limit ?? ''} /></div>
+      <label class={`pl-check ${p.once_per_customer ? 'is-checked' : ''}`}><input type="checkbox" name="once_per_customer" checked={Boolean(p.once_per_customer)} /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Один раз на покупателя</span></label>
+      <div class="pl-note"><i class="ic ic-info"></i><span data-preview></span></div>
+      <span class="pl-field__error" hidden data-err><i class="ic ic-alert ic-16"></i><span></span></span>
+      <button class="pl-btn pl-btn--primary pl-btn--block" type="submit">{edit ? 'Сохранить' : 'Создать промокод'}</button>
+    </form>
+    <div class="col g16" style="flex: 999 1 520px; min-width: 0;">
+      <div class="chips"><a class={`chip ${f === 'all' ? 'on' : ''}`} href="/admin/promos">Все</a><a class={`chip ${f === 'active' ? 'on' : ''}`} href="/admin/promos?f=active">Активные <span class="n">{active.length}</span></a><a class={`chip ${f === 'done' ? 'on' : ''}`} href="/admin/promos?f=done">Завершённые <span class="n">{done.length}</span></a></div>
+      <div class="tbl-box">
+        <table class="tbl">
+          <thead><tr><th>Код</th><th>Скидка</th><th>Мин. сумма</th><th>Срок</th><th class="num">Применений</th><th>Статус</th><th></th></tr></thead>
+          <tbody>
+            {list.map((x) => {
+              const st = promoState(x);
+              const finished = st === 'expired' || st === 'exhausted';
+              return (
+                <tr class={x.id === editId ? 'sel' : undefined}>
+                  <td><b style={`font-weight: 600; letter-spacing: .04em;${finished ? ' color: var(--ink-muted);' : ''}`}>{x.code}</b>{x.once_per_customer ? <span class="xs muted" style="display: block;">1 раз на покупателя</span> : null}</td>
+                  <td>{x.kind === 'percent' ? `${x.value}%` : rub(x.value)}</td>
+                  <td>{x.min_total ? rub(x.min_total) : '—'}</td>
+                  <td>{promoDateRange(x)}</td>
+                  <td class="num">{x.usage_limit && !finished ? <span class="col" style="align-items: flex-end; gap: 4px;"><span>{num(x.used)} / {num(x.usage_limit)}</span><span class="bar"><span style={`width: ${Math.min(100, Math.round((x.used / x.usage_limit) * 100))}%;`}></span></span></span> : `${num(x.used)} / ${x.usage_limit ? num(x.usage_limit) : '∞'}`}</td>
+                  <td><span class={`pl-badge ${STATE[st][0]}`}>{st === 'active' && <span class="pl-badge__dot"></span>}{STATE[st][1]}</span></td>
+                  <td><span class="row g4"><a class="act" href={`/admin/promos?edit=${x.id}`} aria-label="Редактировать"><i class="ic ic-edit ic-18"></i></a><button class="act" type="button" aria-label="Удалить" data-del={x.id} data-code={x.code}><i class="ic ic-trash ic-18"></i></button></span></td>
+                </tr>
+              );
+            })}
+            {!list.length && <tr><td colspan="7" class="muted" style="text-align: center; padding: 32px 16px;">Промокодов нет</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</Admin>
+<script>
+  import { api, toast } from '../../scripts/app';
+  import { rubJs } from '../../scripts/fmt';
+  const form = document.querySelector<HTMLFormElement>('[data-promo-form]')!;
+  const val = (n: string) => (form.elements.namedItem(n) as HTMLInputElement).value.trim();
+  const preview = () => {
+    const kind = (form.querySelector<HTMLInputElement>('input[name="kind"]:checked')!).value;
+    form.querySelector('[data-value-label]')!.textContent = kind === 'percent' ? 'Скидка, %' : 'Скидка, ₽';
+    const v = Number(val('value')) || 0;
+    const min = Number(val('min_total')) || 0;
+    const label = kind === 'percent' ? `«скидка ${v}%»` : `«скидка ${rubJs(v)}»`;
+    form.querySelector('[data-preview]')!.textContent = min
+      ? `В корзине: ${label} при заказе от ${rubJs(min)}. Ниже суммы — «Минимальная сумма заказа — ${rubJs(min)}».`
+      : `В корзине: ${label} на любой заказ.`;
+  };
+  form.addEventListener('input', preview);
+  form.addEventListener('change', preview);
+  preview();
+  form.querySelector('[data-gen]')!.addEventListener('click', () => {
+    const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let s = 'PALADA';
+    for (let i = 0; i < 4; i++) s += abc[Math.floor(Math.random() * abc.length)];
+    (form.elements.namedItem('code') as HTMLInputElement).value = s;
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data: Record<string, any> = Object.fromEntries(new FormData(form).entries());
+    data.action = 'save';
+    data.id = form.dataset.id ? Number(form.dataset.id) : undefined;
+    data.once_per_customer = (form.elements.namedItem('once_per_customer') as HTMLInputElement).checked;
+    const r = await api('/api/admin/promos', data);
+    const err = form.querySelector<HTMLElement>('[data-err]')!;
+    if (!r.ok) {
+      err.hidden = false;
+      err.querySelector('span')!.textContent = r.error;
+      return;
+    }
+    location.href = '/admin/promos';
+  });
+  document.addEventListener('click', async (e) => {
+    const d = (e.target as HTMLElement).closest<HTMLElement>('[data-del]');
+    if (!d) return;
+    if (!confirm(`Удалить промокод ${d.dataset.code}?`)) return;
+    const r = await api('/api/admin/promos', { action: 'delete', id: Number(d.dataset.del) });
+    r.ok ? location.reload() : toast(r.error, 'error');
+  });
+</script>

@@ -1,0 +1,24 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import AccountSide from '../../components/AccountSide.astro';
+import OrdersPanel from '../../components/OrdersPanel.astro';
+
+const u = Astro.locals.user;
+if (!u) return Astro.redirect('/login?next=/account/orders');
+if (Astro.locals.company) return Astro.redirect('/b2b/account');
+---
+<Shop title="Мои заказы" tool="account" tab="account" noindex mobileHeader={{ kind: 'title', title: 'Мои заказы', back: '/account', backLabel: 'Назад в кабинет' }} mobileFooter={false} pageClass="orders-page">
+  <main class="wrap" style="padding-top: 40px; padding-bottom: 96px;">
+    <h1 class="t-h2 d-only" style="margin-bottom: 32px;">Личный кабинет</h1>
+    <div class="acc">
+      <AccountSide active="orders" />
+      <OrdersPanel />
+    </div>
+  </main>
+</Shop>
+<style is:global>
+  @media (max-width: 767px) {
+    .orders-page { background: var(--surface-alt); }
+    .orders-page main { padding-top: 16px !important; }
+  }
+</style>

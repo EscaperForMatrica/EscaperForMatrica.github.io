@@ -1,0 +1,27 @@
+---
+import OrdersList from './OrdersList.astro';
+import { userOrders, orderCounts, ACTIVE } from '../lib/orders';
+
+const f = Astro.url.searchParams.get('f');
+const filter = (f === 'active' || f === 'received' ? f : 'all') as 'all' | 'active' | 'received';
+const orders = userOrders(Astro.locals, filter);
+const counts = orderCounts(Astro.locals);
+const firstActive = orders.find((o) => ACTIVE.includes(o.status));
+const base = Astro.url.pathname;
+---
+<div class="acc-main col g16">
+  {counts.all > 0 ? (
+    <>
+      <div class="row between d-only"><div class="chips"><a class={`chip ${filter === 'all' ? 'on' : ''}`} href={base}>Все</a><a class={`chip ${filter === 'active' ? 'on' : ''}`} href={`${base}?f=active`}>Активные <span class="n">{counts.active}</span></a><a class={`chip ${filter === 'received' ? 'on' : ''}`} href={`${base}?f=received`}>Полученные <span class="n">{counts.received}</span></a></div></div>
+      <div class="m-scroll m-only" style="padding: 0 16px 0; margin: 0 -16px;"><a class={`chip ${filter === 'all' ? 'on' : ''}`} href={base}>Все · {counts.all}</a><a class={`chip ${filter === 'active' ? 'on' : ''}`} href={`${base}?f=active`}>Активные · {counts.active}</a><a class={`chip ${filter === 'received' ? 'on' : ''}`} href={`${base}?f=received`}>Полученные</a></div>
+      {orders.length ? <OrdersList orders={orders} openId={firstActive?.id} /> : <p class="muted" style="padding: 24px 0;">В этом разделе заказов нет.</p>}
+    </>
+  ) : (
+    <section class="box col g16 empty-box">
+      <span class="state-ic state-empty"><i class="ic ic-box ic-40"></i></span>
+      <h2 class="t-h3" style="font-size: 26px;">Заказов пока нет</h2>
+      <p class="muted" style="max-width: 380px;">Здесь появятся ваши заказы, их статусы и трек-номера.</p>
+      <a class="pl-btn pl-btn--primary" href="/catalog" style="margin-top: 8px;">Выбрать товары</a>
+    </section>
+  )}
+</div>

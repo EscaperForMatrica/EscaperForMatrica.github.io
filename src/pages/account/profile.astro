@@ -1,0 +1,18 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import AccountSide from '../../components/AccountSide.astro';
+import ProfileHub from '../../components/ProfileHub.astro';
+
+const u = Astro.locals.user;
+if (!u) return Astro.redirect('/login?next=/account/profile');
+if (Astro.locals.company) return Astro.redirect('/b2b/account?tab=contact');
+---
+<Shop title="Профиль" tool="account" tab="account" noindex mobileHeader={{ kind: 'plain' }} mobileFooter={false}>
+  <main class="wrap m-pt20" style="padding-top: 40px; padding-bottom: 96px;">
+    <h1 class="t-h2 d-only" style="margin-bottom: 32px;">Личный кабинет</h1>
+    <div class="acc">
+      <AccountSide active="profile" />
+      <ProfileHub />
+    </div>
+  </main>
+</Shop>

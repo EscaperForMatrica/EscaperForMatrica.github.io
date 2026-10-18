@@ -1,0 +1,31 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import { paymentsLive, isProd, config } from '../../lib/config';
+import { getPayment } from '../../lib/payments';
+import { getOrder, canView } from '../../lib/orders';
+import { rub } from '../../lib/format';
+
+// Заглушка платёжного сервиса для разработки. В боевом режиме покупатель уходит на страницу ЮKassa.
+if (paymentsLive() || (isProd && !config.demo)) return Astro.rewrite('/404');
+const p = getPayment(Number(Astro.url.searchParams.get('payment')));
+const order = p ? getOrder(p.order_id) : undefined;
+if (!p || !order || !canView(order, Astro.locals)) return Astro.rewrite('/404');
+if (p.status !== 'pending') return Astro.redirect(`/order/${order.id}?payment=${p.id}`);
+---
+<Shop title="Тестовая оплата" header="checkout" step={3} noindex showTab={false} footer={false} fabs={false} cookie={false} mobileHeader={{ kind: 'plain' }} pageClass="alt">
+  <main class="wrap" style="padding: 72px 32px 96px; display: flex; justify-content: center;">
+    <div class="box col g24" style="width: 520px; max-width: 100%; padding: 40px;">
+      <div class="dev-note"><i class="ic ic-info ic-18"></i>Тестовый режим: ключи ЮKassa не заданы, деньги не списываются.</div>
+      <div class="col g8">
+        <h1 class="t-h3" style="font-size: 26px;">Оплата заказа № {order.id}</h1>
+        <p class="sm muted">{p.method === 'sbp' ? 'СБП — в боевом режиме здесь откроется QR-код и приложение банка.' : 'Банковская карта — в боевом режиме здесь будет защищённая форма ЮKassa.'}</p>
+      </div>
+      <div class="row between" style="background: var(--surface-alt); border-radius: 8px; padding: 16px 20px;"><span class="muted">К оплате</span><b class="pl-price">{rub(p.amount)}</b></div>
+      <form method="post" action="/api/payments/test" class="col g12">
+        <input type="hidden" name="payment" value={p.id} />
+        <button class="pl-btn pl-btn--primary pl-btn--block" name="result" value="success"><i class="ic ic-check ic-20"></i>Оплата прошла</button>
+        <button class="pl-btn pl-btn--secondary pl-btn--block" name="result" value="fail">Банк отклонил платёж</button>
+      </form>
+    </div>
+  </main>
+</Shop>

@@ -1,0 +1,83 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import { DOCS, getDoc } from '../../lib/legal';
+import { shop } from '../../lib/config';
+
+const doc = getDoc(Astro.params.doc || '');
+if (!doc) return Astro.rewrite('/404');
+const navDocs = DOCS.filter((d) => d.slug !== 'offer-b2b' || doc.slug === 'offer-b2b');
+---
+<Shop title={doc.title} mobileHeader={{ kind: 'title', title: 'Документы', back: '/' }} mobileFooter={false}>
+  <main class="wrap">
+    <nav class="crumbs"><a href="/">Главная</a><i class="ic ic-chev-r"></i><span>Документы</span></nav>
+    <div class="m-scroll m-only" style="padding: 16px 16px 8px; margin: 0 -16px;">
+      {navDocs.map((d) => <a class={`chip ${d.slug === doc.slug ? 'on' : ''}`} href={`/legal/${d.slug}`}>{d.chip}</a>)}
+    </div>
+    <div class="legal">
+      <aside class="legal-nav d-only">
+        <div class="col g4" style="position: sticky; top: 24px;">
+          <span class="xs muted" style="padding: 0 16px 8px; font-weight: 600;">Документы</span>
+          {navDocs.map((d) => <a class={`side-a ${d.slug === doc.slug ? 'on' : ''}`} href={`/legal/${d.slug}`}><i class="ic ic-doc ic-20"></i>{d.nav}</a>)}
+          <div class="hr" style="margin: 16px 0;"></div>
+          <span class="xs muted" style="padding: 0 16px 8px; font-weight: 600;">На этой странице</span>
+          {doc.sections.map((s, i) => <a class={`sm ${i === 0 ? '' : 'muted'}`} href={`#${s.id}`} style={`padding: 6px 16px;${i === 0 ? ' color: var(--accent-ink);' : ''}`} data-spy={s.id}>{s.title}</a>)}
+        </div>
+      </aside>
+      <article class="legal-body" style="padding-bottom: 24px;">
+        <h1 class="t-h2 legal-h1" style="margin-bottom: 12px;">{doc.title}</h1>
+        <div class="row g16 sm muted d-only" style="margin-bottom: 8px;"><span>Редакция от [дата]</span><span>·</span><button class="link" type="button" onclick="window.print()">Скачать PDF</button></div>
+        <p class="sm muted m-only" style="margin-top: 8px;">Редакция от [дата] · <button class="link" type="button" onclick="window.print()">PDF</button></p>
+        <label class="select m-only" style="width: 100%; justify-content: space-between; margin-top: 20px; height: 48px;"><span>Содержание</span><i class="ic ic-chev-d ic-18"></i>
+          <select aria-label="Содержание" data-toc><option value="">Содержание</option>{doc.sections.map((s) => <option value={s.id}>{s.title}</option>)}</select>
+        </label>
+        {doc.sections.map((s) => (
+          <>
+            <h2 id={s.id}>{s.title}</h2>
+            {s.paragraphs?.map((p) => <p>{p}</p>)}
+            {s.list && <ol>{s.list.map((li) => <li>{li}</li>)}</ol>}
+            {s.requisites && (
+              <div class="box-line col g8" style="padding: 20px 24px; margin-top: 8px;">
+                <div class="sum-row"><span class="muted">Наименование</span><span>{shop.legalName}</span></div>
+                <div class="sum-row"><span class="muted">ИНН</span><span>{shop.inn}</span></div>
+                <div class="sum-row"><span class="muted">ОГРН</span><span>{shop.ogrn}</span></div>
+                <div class="sum-row"><span class="muted">Телефон</span><span>{shop.supportPhone}</span></div>
+                <div class="sum-row"><span class="muted">Юридический адрес</span><span>[адрес]</span></div>
+              </div>
+            )}
+          </>
+        ))}
+      </article>
+    </div>
+  </main>
+</Shop>
+<style is:global>
+  .legal-body h2 { scroll-margin-top: 24px; }
+  @media (max-width: 767px) {
+    .legal-h1 { font-size: 28px !important; margin-top: 16px; margin-bottom: 0 !important; }
+    .legal { padding-bottom: 40px; }
+  }
+</style>
+<script>
+  document.querySelector<HTMLSelectElement>('[data-toc]')?.addEventListener('change', (e) => {
+    const id = (e.target as HTMLSelectElement).value;
+    if (id) document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  });
+  // Подсветка текущего раздела в «На этой странице»
+  const links = document.querySelectorAll<HTMLAnchorElement>('[data-spy]');
+  if (links.length && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        links.forEach((a) => {
+          const on = a.dataset.spy === en.target.id;
+          a.classList.toggle('muted', !on);
+          a.style.color = on ? 'var(--accent-ink)' : '';
+        });
+      });
+    }, { rootMargin: '0px 0px -70% 0px' });
+    links.forEach((a) => {
+      const t = document.getElementById(a.dataset.spy!);
+      if (t) io.observe(t);
+    });
+  }
+</script>

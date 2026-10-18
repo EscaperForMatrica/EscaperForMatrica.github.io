@@ -1,0 +1,21 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import AccountSide from '../../components/AccountSide.astro';
+import OrdersPanel from '../../components/OrdersPanel.astro';
+import ProfileHub from '../../components/ProfileHub.astro';
+
+// Десктоп: «Мои заказы». Мобайл: экран кабинета (профиль + меню) — как в макетах.
+const u = Astro.locals.user;
+if (!u) return Astro.redirect('/login?next=/account');
+if (Astro.locals.company) return Astro.redirect('/b2b/account');
+---
+<Shop title="Личный кабинет" tool="account" tab="account" noindex mobileHeader={{ kind: 'plain' }} mobileFooter={false}>
+  <main class="wrap m-pt20" style="padding-top: 40px; padding-bottom: 96px;">
+    <h1 class="t-h2 d-only" style="margin-bottom: 32px;">Личный кабинет</h1>
+    <div class="acc">
+      <AccountSide active="orders" />
+      <div class="d-only" style="display: contents;"><OrdersPanel /></div>
+      <ProfileHub desktop={false} />
+    </div>
+  </main>
+</Shop>

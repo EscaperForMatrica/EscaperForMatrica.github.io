@@ -1,0 +1,113 @@
+---
+import Shop from '../layouts/Shop.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { categories, popularProducts, categoryBySlug } from '../lib/catalog';
+import { cartQtyMap } from '../lib/cart';
+import { favIds } from '../lib/favorites';
+import { shop } from '../lib/config';
+
+const cats = categories();
+const active = Astro.url.searchParams.get('cat') || '';
+const cat = active ? categoryBySlug(active) : undefined;
+const products = popularProducts(cat?.slug, 8);
+const inCart = cartQtyMap(Astro.locals);
+const favs = favIds(Astro.locals);
+const isB2b = Astro.locals.user?.role === 'b2b';
+---
+<Shop title="PALADA" tab={null}>
+  <section class="hero d-only">
+    <div class="wrap">
+      <div class="col g24" style="padding: 64px 0;">
+        <span class="kicker"><i class="ic ic-drop ic-18"></i>Концентрированные гели</span>
+        <h1 class="t-h1">Одна канистра —<br />165 стирок</h1>
+        <p style="font-size: 18px; max-width: 480px;" class="muted">Заказывайте напрямую с завода — до 40% выгоднее, чем на маркетплейсах.</p>
+        <div class="row g16" style="margin-top: 8px;">
+          <a class="pl-btn pl-btn--primary" href="/catalog" style="padding: 0 32px;">В каталог<i class="ic ic-arrow-r ic-20"></i></a>
+          <span class="sm muted">Доставка в ПВЗ Ozon и Wildberries</span>
+        </div>
+        <div class="row g48" style="margin-top: 32px;">
+          <div class="col g4"><span class="big-num" style="font-size: 40px;">165</span><span class="sm muted">стирок из 5 литров</span></div>
+          <div class="col g4"><span class="big-num" style="font-size: 40px;">до 40%</span><span class="sm muted">выгоднее маркетплейсов</span></div>
+        </div>
+      </div>
+      <div class="hero-photo"><img src="/img/ph/canister-accent-hero.svg" alt="Канистра геля для стирки PALADA, 5 литров" width="560" height="560" /></div>
+    </div>
+  </section>
+
+  <section class="alt m-only" style="padding: 32px 16px 40px; display: flex; flex-direction: column; gap: 20px;">
+    <span class="kicker"><i class="ic ic-drop ic-16"></i>Концентрированные гели</span>
+    <h1 class="m-h1">Одна канистра — 165 стирок</h1>
+    <p class="muted">Заказывайте напрямую с завода — до 40% выгоднее, чем на маркетплейсах.</p>
+    <div class="hero-photo"><img src="/img/ph/canister-accent-hero.svg" alt="Канистра геля для стирки PALADA, 5 литров" width="358" height="358" /></div>
+    <a class="pl-btn pl-btn--primary pl-btn--block" href="/catalog">В каталог<i class="ic ic-arrow-r ic-20"></i></a>
+    <div class="row g32"><div class="col"><span class="big-num" style="font-size: 32px;">165</span><span class="xs muted">стирок из 5 литров</span></div><div class="col"><span class="big-num" style="font-size: 32px;">до 40%</span><span class="xs muted">выгоднее маркетплейсов</span></div></div>
+  </section>
+
+  <section class="sec d-only">
+    <div class="wrap col g48">
+      <h2 class="t-h2">С завода — до вашего порога</h2>
+      <div class="grid4 keep4">
+        <div class="adv"><span class="adv-ic"><i class="ic ic-coin ic-28"></i></span><h3 class="t-h3">Лучшая цена</h3><p class="muted">Без комиссий и переплат маркетплейсам.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-store ic-28"></i></span><h3 class="t-h3">Удобный ПВЗ</h3><p class="muted">Доставим в пункт выдачи Ozon или Wildberries — как вы привыкли.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-card ic-28"></i></span><h3 class="t-h3">Оплата картой и через СБП</h3><p class="muted">Безопасная оплата онлайн при оформлении заказа.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-shield ic-28"></i></span><h3 class="t-h3">«Честный знак»</h3><p class="muted">Каждая партия зарегистрирована — защита от подделок.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="m-sec col g24 m-only">
+    <h2 class="m-h2">С завода — до вашего порога</h2>
+    <div class="col g12">
+      <div class="adv" style="padding: 20px; flex-direction: row; gap: 16px; align-items: flex-start;"><span class="adv-ic" style="width: 48px; height: 48px; margin: 0; flex: none;"><i class="ic ic-coin"></i></span><div class="col g4"><h3 class="t-h4">Лучшая цена</h3><p class="sm muted">Без комиссий и переплат маркетплейсам.</p></div></div>
+      <div class="adv" style="padding: 20px; flex-direction: row; gap: 16px; align-items: flex-start;"><span class="adv-ic" style="width: 48px; height: 48px; margin: 0; flex: none;"><i class="ic ic-store"></i></span><div class="col g4"><h3 class="t-h4">Удобный ПВЗ</h3><p class="sm muted">Доставим в пункт выдачи Ozon или Wildberries.</p></div></div>
+      <div class="adv" style="padding: 20px; flex-direction: row; gap: 16px; align-items: flex-start;"><span class="adv-ic" style="width: 48px; height: 48px; margin: 0; flex: none;"><i class="ic ic-card"></i></span><div class="col g4"><h3 class="t-h4">Оплата картой и через СБП</h3><p class="sm muted">Безопасная оплата онлайн.</p></div></div>
+      <div class="adv" style="padding: 20px; flex-direction: row; gap: 16px; align-items: flex-start;"><span class="adv-ic" style="width: 48px; height: 48px; margin: 0; flex: none;"><i class="ic ic-shield"></i></span><div class="col g4"><h3 class="t-h4">«Честный знак»</h3><p class="sm muted">Каждая партия зарегистрирована — защита от подделок.</p></div></div>
+    </div>
+  </section>
+
+  <section class="sec alt" id="popular">
+    <div class="wrap col g48">
+      <div class="col g24">
+        <div class="row between" style="align-items: flex-end;">
+          <h2 class="t-h2">Популярные товары</h2>
+          <a class="pl-btn pl-btn--text d-only" href="/catalog">Весь каталог<i class="ic ic-arrow-r ic-20"></i></a>
+        </div>
+        <nav class="chips scroll" aria-label="Категории">
+          <a class={`chip ${!cat ? 'on' : ''}`} href="/#popular">Все</a>
+          {cats.map((c) => <a class={`chip ${cat?.id === c.id ? 'on' : ''}`} href={`/?cat=${c.slug}#popular`}>{c.name}</a>)}
+        </nav>
+      </div>
+      <div class="grid4 home-popular">
+        {products.map((p, i) => (
+          <div class={i >= 4 ? 'd-only' : undefined} style="display: contents;">
+            <ProductCard p={p} inCart={inCart.has(p.id)} fav={favs.has(p.id)} />
+          </div>
+        ))}
+      </div>
+      <a class="pl-btn pl-btn--secondary pl-btn--block m-only" href={cat ? `/catalog?cat=${cat.slug}` : '/catalog'}>Весь каталог</a>
+    </div>
+  </section>
+
+  <section class="sec d-only">
+    <div class="wrap">
+      <div class="box-line row g32" style="padding: 40px 48px; background: var(--accent-tint); border-color: transparent;">
+        <div class="col g8 grow"><h2 class="t-h3" style="font-size: 26px;">Оптовые заказы</h2><p class="muted">Для магазинов, клининга и HoReCa — цены завода от партии.</p></div>
+        <a class="pl-btn pl-btn--secondary" href={`tel:${shop.wholesaleTel}`} style="background: var(--surface);"><i class="ic ic-phone ic-20"></i>{shop.wholesalePhone}</a>
+        <a class="pl-btn pl-btn--primary" href={isB2b ? '/b2b/catalog' : '/b2b'}>Оптовые цены</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="m-sec m-only" style="padding-top: 40px; padding-bottom: 40px;">
+    <div class="col g12" style="background: var(--accent-tint); border-radius: 8px; padding: 24px;">
+      <h2 class="t-h3">Оптовые заказы</h2>
+      <p class="sm muted">Для магазинов, клининга и HoReCa — цены завода от партии.</p>
+      <a class="pl-btn pl-btn--primary pl-btn--block" href={isB2b ? '/b2b/catalog' : '/b2b/register'}>{isB2b ? 'Оптовые цены' : 'Зарегистрировать компанию'}</a>
+      <a class="pl-btn pl-btn--secondary pl-btn--block" href={`tel:${shop.wholesaleTel}`} style="background: var(--surface);"><i class="ic ic-phone ic-20"></i>{shop.wholesalePhone}</a>
+    </div>
+  </section>
+</Shop>
+<style is:global>
+  /* Планшет с тремя колонками: показываем два полных ряда */
+  @media (min-width: 960px) and (max-width: 1199px) { .home-popular > :nth-child(n + 7) { display: none !important; } }
+</style>

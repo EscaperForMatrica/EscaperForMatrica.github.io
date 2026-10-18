@@ -1,0 +1,193 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { productById, categories } from '../../../lib/catalog';
+import { imageUrl } from '../../../lib/images';
+
+const isNew = Astro.params.id === 'new';
+const p = isNew ? undefined : productById(Number(Astro.params.id));
+if (!isNew && !p) return Astro.rewrite('/404');
+const cats = categories();
+const catId = p?.category_id ?? cats[0]?.id;
+const specs = (p?.specs || []).filter(([k]) => k !== 'Маркировка');
+const usage = (p?.usage || '').split('\n').filter(Boolean).map((u, i) => `${i + 1}. ${u.replace(/^\s*\d+[.)]\s*/, '')}`).join('\n');
+const discount = p?.discount ? `−${p.discount}%` : '—';
+const title = isNew ? 'Новый товар' : p!.name;
+---
+<Admin title={title} active="products">
+  <form class="col g24" data-product-form data-id={p?.id || ''} novalidate>
+    <div class="adm-top">
+      <a class="act" href="/admin/products" aria-label="Назад к товарам"><i class="ic ic-chev-l ic-20"></i></a>
+      <h1 class="t-h3" style="font-size: 26px;">{title}</h1>
+      {!isNew && (p!.visible ? <span class="pl-badge pl-badge--accent">На сайте</span> : <span class="pl-badge pl-badge--neutral">Скрыт</span>)}
+      {!isNew && p!.visible === 1 && p!.price !== null && <a class="sm link" href={`/product/${p!.slug}`} target="_blank">Открыть на сайте</a>}
+      <span class="grow"></span>
+      {!isNew && <button class="pl-btn pl-btn--text" type="button" style="color: var(--error);" data-delete><i class="ic ic-trash ic-18"></i>Удалить</button>}
+      <a class="pl-btn pl-btn--secondary pl-btn--sm" href="/admin/products">Отмена</a>
+      <button class="pl-btn pl-btn--primary pl-btn--sm" type="submit">Сохранить</button>
+    </div>
+    <div class="pl-note pl-note--error" hidden data-form-error><i class="ic ic-alert"></i><span></span></div>
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+      <div class="col g24" style="flex: 999 1 520px; min-width: 0;">
+        <section class="box-line col g20">
+          <h2 class="t-h4">Основное</h2>
+          <div class="pl-field"><label class="pl-field__label" for="f-name">Название</label><input class="pl-input" id="f-name" name="name" value={p?.name || ''} required /></div>
+          <div class="grid2" style="gap: 16px 20px;">
+            <div class="pl-field"><label class="pl-field__label" for="f-variant">Объём / вариант</label><input class="pl-input" id="f-variant" name="variant" value={p?.variant || ''} placeholder="Например, 600 мл" /></div>
+            <div class="pl-field"><label class="pl-field__label" for="f-sku">Артикул</label><input class="pl-input" id="f-sku" name="sku" value={p?.sku || ''} /></div>
+            <div class="pl-field"><label class="pl-field__label">Категория</label><label class="select" style="height: 48px; justify-content: space-between;"><span>{cats.find((c) => c.id === catId)?.name}</span><i class="ic ic-chev-d ic-18"></i><select name="category_id" aria-label="Категория">{cats.map((c) => <option value={c.id} selected={c.id === catId}>{c.name}</option>)}</select></label></div>
+            <div class="pl-field"><label class="pl-field__label" for="f-washes">Количество стирок <i>(для гелей)</i></label><input class="pl-input" id="f-washes" name="washes" inputmode="numeric" value={p?.washes ?? ''} placeholder="Например, 165" /></div>
+          </div>
+          <div class="pl-field"><label class="pl-field__label" for="f-desc">Описание</label><textarea class="pl-input" id="f-desc" name="description" style="min-height: 140px;">{p?.description || ''}</textarea></div>
+          <div class="pl-field"><label class="pl-field__label" for="f-usage">Способ применения</label><textarea class="pl-input" id="f-usage" name="usage" style="min-height: 96px;" placeholder="Каждый шаг — с новой строки">{usage}</textarea><span class="pl-field__hint">Каждый шаг — с новой строки, нумерация добавится сама</span></div>
+          <div class="pl-field"><label class="pl-field__label" for="f-comp">Состав <i>(необязательно)</i></label><textarea class="pl-input" id="f-comp" name="composition" style="min-height: 72px;">{p?.composition || ''}</textarea></div>
+        </section>
+        <section class="box-line col g16">
+          <h2 class="t-h4">Характеристики</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 40px; gap: 12px; align-items: center;" data-specs>
+            {specs.map(([k, v]) => (
+              <>
+                <input class="pl-input" value={k} data-spec-k aria-label="Название характеристики" /><input class="pl-input" value={v} data-spec-v aria-label="Значение" /><button class="act" type="button" aria-label="Удалить строку" data-spec-rm><i class="ic ic-close ic-18"></i></button>
+              </>
+            ))}
+          </div>
+          <button class="pl-btn pl-btn--text" type="button" style="align-self: flex-start; padding-left: 0;" data-spec-add><i class="ic ic-plus ic-18"></i>Добавить характеристику</button>
+          <span class="xs muted">«Маркировка: Честный знак» добавляется на сайте автоматически.</span>
+        </section>
+      </div>
+      <div class="col g24" style="flex: 1 1 360px;">
+        <section class="box-line col g16">
+          <h2 class="t-h4">Фото</h2>
+          <div class="grid3" style="gap: 10px;" data-photos>
+            {(p?.images || []).map((img, i) => (
+              <span class={`thumb photo-tile ${i === 0 ? 'on' : ''}`} style="width: auto; height: auto; aspect-ratio: 1 / 1; position: relative;" data-photo={img}>
+                <img src={imageUrl(img)} alt="" />
+                {i === 0 && <span class="pl-badge pl-badge--accent" style="position: absolute; left: 6px; bottom: 6px; height: 20px; font-size: 11px; padding: 0 6px;">Главное</span>}
+                <span class="tile-acts">{i > 0 && <button type="button" aria-label="Сделать главным" data-photo-main><i class="ic ic-check ic-16"></i></button>}<button type="button" aria-label="Удалить фото" data-photo-rm><i class="ic ic-close ic-16"></i></button></span>
+              </span>
+            ))}
+          </div>
+          <label class="drop" data-drop>
+            <i class="ic ic-upload ic-28" style="color: var(--accent-ink);"></i>
+            <span><b style="color: var(--ink); font-weight: 600;">Перетащите фото</b> или <span class="link">выберите файл</span></span>
+            <span class="xs">JPG, PNG или WebP, квадрат от 1200 px</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" data-file />
+          </label>
+        </section>
+        <section class="box-line col g16">
+          <h2 class="t-h4">Цена и наличие</h2>
+          <div class="grid2" style="gap: 16px;">
+            <div class="pl-field"><label class="pl-field__label" for="f-price">Цена, ₽</label><input class="pl-input" id="f-price" name="price" inputmode="numeric" value={p?.price ?? ''} data-calc /></div>
+            <div class="pl-field"><label class="pl-field__label" for="f-old">Старая цена, ₽ <i>(необяз.)</i></label><input class="pl-input" id="f-old" name="old_price" inputmode="numeric" value={p?.old_price ?? ''} data-calc /></div>
+            <div class="pl-field"><label class="pl-field__label" for="f-stock">Остаток, шт.</label><input class="pl-input" id="f-stock" name="stock" inputmode="numeric" value={p?.stock ?? 0} /></div>
+            <div class="pl-field"><label class="pl-field__label">Скидка на сайте</label><input class="pl-input is-disabled" value={discount} disabled data-discount /></div>
+          </div>
+          <div class="hr"></div>
+          <span class="row g8"><span class="pl-badge pl-badge--accent"><i class="ic ic-store ic-16"></i>Опт</span><span class="sm muted">видят только компании</span></span>
+          <div class="grid2" style="gap: 16px;">
+            <div class="pl-field"><label class="pl-field__label" for="f-ws">Оптовая цена, ₽ за шт.</label><input class="pl-input" id="f-ws" name="wholesale_price" inputmode="numeric" value={p?.wholesale_price ?? ''} /></div>
+            <div class="pl-field"><label class="pl-field__label" for="f-box">В коробке, шт.</label><input class="pl-input" id="f-box" name="box_qty" inputmode="numeric" value={p?.box_qty ?? 12} /><span class="pl-field__hint">Заказ кратен коробке</span></div>
+          </div>
+        </section>
+        <section class="box-line col g12">
+          <div class="row between g16"><div class="col"><b style="font-weight: 600;">Показывать на сайте</b><span class="sm muted">Скрытый товар не виден в каталоге</span></div><button class={`pl-toggle ${!p || p.visible ? 'is-on' : ''}`} type="button" role="switch" aria-checked={!p || p.visible ? 'true' : 'false'} data-toggle="visible"><span class="pl-toggle__track"></span></button></div>
+          <div class="hr"></div>
+          <div class="row between g16"><div class="col"><b style="font-weight: 600;">Популярный товар</b><span class="sm muted">Показывать на главной</span></div><button class={`pl-toggle ${p?.popular ? 'is-on' : ''}`} type="button" role="switch" aria-checked={p?.popular ? 'true' : 'false'} data-toggle="popular"><span class="pl-toggle__track"></span></button></div>
+        </section>
+      </div>
+    </div>
+  </form>
+</Admin>
+<script>
+  import { api, toast } from '../../../scripts/app';
+  const form = document.querySelector<HTMLFormElement>('[data-product-form]')!;
+  const id = form.dataset.id;
+  const photos = form.querySelector<HTMLElement>('[data-photos]')!;
+  const specs = form.querySelector<HTMLElement>('[data-specs]')!;
+
+  const tile = (ref: string, url: string) => {
+    const el = document.createElement('span');
+    el.className = 'thumb photo-tile';
+    el.style.cssText = 'width: auto; height: auto; aspect-ratio: 1 / 1; position: relative;';
+    el.dataset.photo = ref;
+    el.innerHTML = `<img src="${url}" alt=""><span class="tile-acts"><button type="button" aria-label="Сделать главным" data-photo-main><i class="ic ic-check ic-16"></i></button><button type="button" aria-label="Удалить фото" data-photo-rm><i class="ic ic-close ic-16"></i></button></span>`;
+    return el;
+  };
+  const relabel = () => {
+    photos.querySelectorAll<HTMLElement>('[data-photo]').forEach((t, i) => {
+      t.classList.toggle('on', i === 0);
+      t.querySelector('.pl-badge')?.remove();
+      t.querySelector('[data-photo-main]')?.toggleAttribute('hidden', i === 0);
+      if (i === 0) t.insertAdjacentHTML('beforeend', '<span class="pl-badge pl-badge--accent" style="position: absolute; left: 6px; bottom: 6px; height: 20px; font-size: 11px; padding: 0 6px;">Главное</span>');
+    });
+  };
+  const upload = async (files: FileList | File[]) => {
+    for (const f of Array.from(files)) {
+      if (!/image\/(jpeg|png|webp)/.test(f.type)) { toast('Подходят JPG, PNG или WebP', 'error'); continue; }
+      if (f.size > 8 * 1024 * 1024) { toast('Файл больше 8 МБ', 'error'); continue; }
+      const fd = new FormData();
+      fd.append('file', f);
+      const r = await api('/api/admin/upload', fd);
+      if (!r.ok) { toast(r.error, 'error'); continue; }
+      photos.appendChild(tile(r.url, r.url));
+      relabel();
+    }
+  };
+  const drop = form.querySelector<HTMLElement>('[data-drop]')!;
+  form.querySelector<HTMLInputElement>('[data-file]')!.addEventListener('change', (e) => upload((e.target as HTMLInputElement).files!));
+  ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('is-over'); }));
+  ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('is-over')));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer?.files) upload(e.dataTransfer.files); });
+
+  form.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const tg = t.closest<HTMLButtonElement>('[data-toggle]');
+    if (tg) { const on = !tg.classList.contains('is-on'); tg.classList.toggle('is-on', on); tg.setAttribute('aria-checked', String(on)); }
+    if (t.closest('[data-photo-rm]')) { t.closest('[data-photo]')!.remove(); relabel(); }
+    if (t.closest('[data-photo-main]')) { photos.prepend(t.closest('[data-photo]')!); relabel(); }
+    if (t.closest('[data-spec-add]')) {
+      specs.insertAdjacentHTML('beforeend', '<input class="pl-input" data-spec-k aria-label="Название характеристики" placeholder="Например, Вес"><input class="pl-input" data-spec-v aria-label="Значение" placeholder="650 г"><button class="act" type="button" aria-label="Удалить строку" data-spec-rm><i class="ic ic-close ic-18"></i></button>');
+      (specs.querySelectorAll<HTMLInputElement>('[data-spec-k]')).item(specs.querySelectorAll('[data-spec-k]').length - 1).focus();
+    }
+    const rm = t.closest<HTMLElement>('[data-spec-rm]');
+    if (rm) { rm.previousElementSibling?.remove(); rm.previousElementSibling?.remove(); rm.remove(); }
+    if (t.closest('[data-delete]')) {
+      if (!confirm('Удалить товар? Это нельзя отменить.')) return;
+      const r = await api('/api/admin/products', { action: 'delete', ids: [Number(id)] });
+      if (r.ok) location.href = '/admin/products';
+      else toast(r.error, 'error');
+    }
+  });
+  form.addEventListener('input', (e) => {
+    if (!(e.target as HTMLElement).matches('[data-calc]')) return;
+    const price = Number((form.elements.namedItem('price') as HTMLInputElement).value);
+    const old = Number((form.elements.namedItem('old_price') as HTMLInputElement).value);
+    (form.querySelector('[data-discount]') as HTMLInputElement).value = price && old > price ? `−${Math.round((1 - price / old) * 100)}%` : '—';
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data: Record<string, any> = Object.fromEntries(new FormData(form).entries());
+    data.action = 'save';
+    data.id = id ? Number(id) : undefined;
+    data.images = Array.from(photos.querySelectorAll<HTMLElement>('[data-photo]')).map((t) => t.dataset.photo);
+    const ks = specs.querySelectorAll<HTMLInputElement>('[data-spec-k]');
+    const vs = specs.querySelectorAll<HTMLInputElement>('[data-spec-v]');
+    data.specs = Array.from(ks).map((k, i) => [k.value.trim(), vs[i].value.trim()]).filter(([k, v]) => k && v);
+    data.visible = form.querySelector('[data-toggle="visible"]')!.classList.contains('is-on');
+    data.popular = form.querySelector('[data-toggle="popular"]')!.classList.contains('is-on');
+    const btn = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
+    btn.classList.add('is-loading');
+    const r = await api('/api/admin/products', data);
+    btn.classList.remove('is-loading');
+    const err = form.querySelector<HTMLElement>('[data-form-error]')!;
+    if (!r.ok) {
+      err.hidden = false;
+      err.querySelector('span')!.textContent = r.error;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    err.hidden = true;
+    toast('Сохранено');
+    if (!id) location.href = `/admin/products/${r.id}`;
+    else setTimeout(() => location.reload(), 500);
+  });
+</script>

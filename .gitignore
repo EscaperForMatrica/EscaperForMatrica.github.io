@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.astro/
+data/
+.env
+.DS_Store
+.claude/
+# Шрифт Tilda Sans скачивается при сборке (npm run fonts) — файлы шрифта не распространяем
+public/fonts/*.woff2
+# Распакованные макеты — только для локальной сверки
+design/

@@ -1,0 +1,179 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import PayModal from '../../components/PayModal.astro';
+import { userOrders, STATUS, documentsFor, DOC_LABEL, itemsCount, positionsCount, getOrder } from '../../lib/orders';
+import { rub, dayMonth, dateDots, phoneInput, plural } from '../../lib/format';
+import { favCount } from '../../lib/favorites';
+import { db } from '../../lib/db';
+
+const { user, company } = Astro.locals;
+if (!user) return Astro.redirect('/login?next=/b2b/account');
+if (!company) return Astro.redirect('/b2b/register');
+const tab = (['orders', 'docs', 'company', 'contact'].includes(Astro.url.searchParams.get('tab') || '') ? Astro.url.searchParams.get('tab') : 'orders') as 'orders' | 'docs' | 'company' | 'contact';
+const invoiceId = Number(Astro.url.searchParams.get('invoice')) || 0;
+const invoiceOrder = invoiceId ? getOrder(invoiceId) : undefined;
+const orders = userOrders(Astro.locals);
+const favs = favCount(Astro.locals);
+const docs = db.all<any>(
+  `select d.*, o.created_at as order_date from documents d join orders o on o.id = d.order_id where o.company_id = ? order by d.id desc`,
+  company.id,
+);
+const docHref = (d: { kind: string; number: string; file: string; order_id: number }) => (d.file ? d.file : d.kind === 'invoice' ? `/b2b/invoice/${d.order_id}` : '');
+const shortAddr = (o: any) => (o.delivery_type === 'ozon' && o.city ? `г. ${o.city}, ${o.pvz_address}` : o.pvz_address);
+---
+<Shop title="Кабинет компании" tab="account" noindex mobileHeader={{ kind: 'b2b' }} mobileFooter={false}>
+  <main class="wrap m-pt20" style="padding-top: 40px; padding-bottom: 96px;">
+    <h1 class="t-h2" style="margin-bottom: 32px;">Кабинет компании</h1>
+    <div class="acc">
+      <aside class="acc-side">
+        <div class="col g4" style="padding: 0 16px 16px;"><b style="font-weight: 600;">{company.name}</b><span class="sm muted">ИНН {company.inn}</span><span class="sm muted">{user.name.split(/\s+/).slice(0, 2).join(' ')}</span></div>
+        <nav class="col g4 b2b-tabs">
+          <a class={`side-a ${tab === 'orders' ? 'on' : ''}`} href="/b2b/account"><i class="ic ic-box ic-20"></i>Заказы{orders.length > 0 && <span class="n">{orders.length}</span>}</a>
+          <a class={`side-a ${tab === 'docs' ? 'on' : ''}`} href="/b2b/account?tab=docs"><i class="ic ic-doc ic-20"></i>Документы</a>
+          <a class={`side-a ${tab === 'company' ? 'on' : ''}`} href="/b2b/account?tab=company"><i class="ic ic-store ic-20"></i>Реквизиты компании</a>
+          <a class={`side-a ${tab === 'contact' ? 'on' : ''}`} href="/b2b/account?tab=contact"><i class="ic ic-user ic-20"></i>Контактное лицо</a>
+          <a class="side-a" href="/favorites"><i class="ic ic-heart ic-20"></i>Избранное{favs > 0 && <span class="n">{favs}</span>}</a>
+          {user.role === 'admin' && <a class="side-a" href="/admin"><i class="ic ic-edit ic-20"></i>Админка</a>}
+        </nav>
+        <div class="hr" style="margin: 8px 0;"></div>
+        <form method="post" action="/api/auth/logout"><button class="side-a" type="submit" style="color: var(--ink-muted);"><i class="ic ic-logout ic-20"></i>Выйти</button></form>
+      </aside>
+
+      <div class="acc-main col g16">
+        {tab === 'orders' && (
+          <>
+            {invoiceOrder && invoiceOrder.company_id === company.id && (
+              <div class="pl-note" style="padding: 18px 20px; font-size: 15px;"><i class="ic ic-check"></i><span class="grow"><b style="font-weight: 600;">Счёт № {invoiceOrder.id} выставлен.</b> Отправили на {invoiceOrder.email}. Заказ уйдёт в сборку после поступления оплаты.</span></div>
+            )}
+            {!orders.length && (
+              <section class="box col g16 empty-box">
+                <span class="state-ic state-empty"><i class="ic ic-box ic-40"></i></span>
+                <h2 class="t-h3" style="font-size: 26px;">Заказов пока нет</h2>
+                <p class="muted" style="max-width: 380px;">Здесь появятся заказы компании, счета и закрывающие документы.</p>
+                <a class="pl-btn pl-btn--primary" href="/b2b/catalog" style="margin-top: 8px;">Оптовый каталог</a>
+              </section>
+            )}
+            {orders.map((o) => {
+              const st = STATUS[o.status];
+              const d = documentsFor(o.id);
+              const pos = positionsCount(o.id);
+              const pcs = itemsCount(o.id);
+              const pending = o.status === 'pending';
+              const subtitle = pending ? `${pos} ${plural(pos, ['позиция', 'позиции', 'позиций'])}, ${pcs} шт.` : o.payment_method === 'invoice' ? 'оплачен по счёту' : `оплачен ${o.payment_method === 'sbp' ? 'через СБП' : 'картой'}`;
+              return (
+                <article class="order">
+                  <div class="order-h">
+                    <div class="col"><b class="t-h4">Заказ № {o.id}</b><span class="sm muted">от {dayMonth(o.created_at)} · {subtitle}</span></div>
+                    <span class={`pl-badge ${st.cls}`}><i class={`ic ic-${st.icon} ic-16`}></i>{st.label}</span>
+                    <span class="grow"></span>
+                    {o.track && <span class="track">{o.track}</span>}
+                    <b class="pl-price">{rub(o.total)}</b>
+                  </div>
+                  {pending ? (
+                    <div class="order-b">
+                      <div class="col g12">
+                        <span class="xs muted">Оплата</span>
+                        <span>{o.payment_method === 'invoice' ? `Счёт на юрлицо № ${o.id} от ${dateDots(o.created_at)}` : 'Ожидает оплаты картой или через СБП'}</span>
+                        <div class="row g8" style="flex-wrap: wrap;">
+                          {o.payment_method === 'invoice' && <a class="pl-btn pl-btn--primary pl-btn--sm" href={`/b2b/invoice/${o.id}`} target="_blank"><i class="ic ic-upload ic-18" style="transform: rotate(180deg);"></i>Скачать счёт, PDF</a>}
+                          <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" data-pay-order={o.id} data-total={o.total} data-count={pcs}><i class="ic ic-card ic-18"></i>Оплатить картой или СБП</button>
+                        </div>
+                      </div>
+                      <div class="col g8">
+                        <span class="xs muted">Доставка</span>
+                        <span>{o.delivery_type === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'} · {shortAddr(o)}</span>
+                        <span class="sm muted">Трек-номер появится после отправки</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div class="order-b" style="grid-template-columns: 1fr;">
+                      <div class="row g8" style="flex-wrap: wrap;">
+                        <span class="xs muted" style="margin-right: 8px;">Документы</span>
+                        {d.length ? d.map((doc) => (docHref(doc) ? <a class="chip" href={docHref(doc)} target="_blank"><i class="ic ic-doc ic-18"></i>{DOC_LABEL[doc.kind] || doc.kind}{doc.kind !== 'receipt' ? ` № ${doc.number}` : ''}</a> : <span class="chip" style="cursor: default; color: var(--ink-muted);" title="Отправлен на почту"><i class="ic ic-doc ic-18"></i>{DOC_LABEL[doc.kind] || doc.kind}{doc.kind !== 'receipt' ? ` № ${doc.number}` : ''}</span>)) : <span class="sm muted">Появятся после отгрузки</span>}
+                        <span class="grow"></span>
+                        {o.status === 'received' && <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" data-repeat={o.id}><i class="ic ic-refresh ic-18"></i>Повторить заказ</button>}
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </>
+        )}
+
+        {tab === 'docs' && (
+          docs.length ? (
+            <div class="tbl-box">
+              <table class="tbl">
+                <thead><tr><th>Документ</th><th>Заказ</th><th>Дата</th><th></th></tr></thead>
+                <tbody>
+                  {docs.map((d) => (
+                    <tr><td><span class="row g8"><i class="ic ic-doc ic-18 muted"></i>{DOC_LABEL[d.kind] || d.kind}{d.kind !== 'receipt' ? ` № ${d.number}` : ''}</span></td><td>№ {d.order_id}</td><td>{dateDots(d.created_at)}</td><td class="num">{docHref(d) ? <a class="link" href={docHref(d)} target="_blank">Открыть</a> : <span class="sm muted">отправлен на почту</span>}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p class="muted">Документов пока нет — счета появляются при оформлении, УПД — после отгрузки.</p>
+        )}
+
+        {tab === 'company' && (
+          <section class="box-line col g12" style="padding: 32px; max-width: 720px;">
+            <h2 class="t-h3">Реквизиты компании</h2>
+            <div class="sum-row"><span class="muted">Наименование</span><span>{company.name}</span></div>
+            <div class="sum-row"><span class="muted">ИНН</span><span>{company.inn}</span></div>
+            {company.kpp && <div class="sum-row"><span class="muted">КПП</span><span>{company.kpp}</span></div>}
+            {company.ogrn && <div class="sum-row"><span class="muted">ОГРН</span><span>{company.ogrn}</span></div>}
+            <div class="sum-row"><span class="muted">Юридический адрес</span><span style="text-align: right;">{company.address || '—'}</span></div>
+            <div class="pl-note" style="margin-top: 8px;"><i class="ic ic-info"></i><span>Реквизиты подтянуты по ИНН. Если что-то изменилось — напишите вашему менеджеру, обновим.</span></div>
+          </section>
+        )}
+
+        {tab === 'contact' && (
+          <form class="box-line col g20" style="padding: 32px; max-width: 720px;" data-contact-form novalidate>
+            <h2 class="t-h3">Контактное лицо</h2>
+            <div class="pl-field"><label class="pl-field__label" for="c-name">ФИО</label><input class="pl-input" id="c-name" name="name" value={user.name} /></div>
+            <div class="grid2" style="gap: 20px 24px;">
+              <div class="pl-field"><label class="pl-field__label" for="c-pos">Должность <i>(необязательно)</i></label><input class="pl-input" id="c-pos" name="position" value={user.position} placeholder="Например, закупщик" /></div>
+              <div class="pl-field"><label class="pl-field__label" for="c-email">Email для счетов</label><input class="pl-input" id="c-email" name="email" type="email" value={user.email} /></div>
+            </div>
+            <div class="pl-field"><label class="pl-field__label">Телефон для входа</label><input class="pl-input is-disabled" value={phoneInput(user.phone)} disabled /><span class="pl-field__hint">Вход — по коду из СМС</span></div>
+            <span class="pl-field__error" hidden data-err><i class="ic ic-alert ic-16"></i><span></span></span>
+            <div class="row g12"><button class="pl-btn pl-btn--primary" type="submit">Сохранить</button><span class="row g8 sm save" hidden data-saved><i class="ic ic-check ic-18"></i>Изменения сохранены</span></div>
+          </form>
+        )}
+      </div>
+    </div>
+  </main>
+  <PayModal slot="after" />
+</Shop>
+<style is:global>
+  @media (max-width: 767px) {
+    .b2b-tabs { flex-direction: row !important; overflow-x: auto; gap: 8px !important; margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
+    .b2b-tabs .side-a { flex: none; height: 40px; border: 1px solid var(--line); }
+    .b2b-tabs .side-a.on { border-color: var(--accent); }
+    .b2b-tabs .side-a .n { margin-left: 4px; }
+  }
+</style>
+<script>
+  import { api, toast } from '../../scripts/app';
+  document.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const p = t.closest<HTMLButtonElement>('[data-pay-order]');
+    if (p) (window as any).palada.openPay({ orderId: Number(p.dataset.payOrder), total: Number(p.dataset.total), count: Number(p.dataset.count) });
+    const rep = t.closest<HTMLButtonElement>('[data-repeat]');
+    if (rep) {
+      const r = await api('/api/cart/repeat', { orderId: Number(rep.dataset.repeat) });
+      if (!r.ok) return toast(r.error, 'error');
+      location.href = r.redirect;
+    }
+  });
+  const f = document.querySelector<HTMLFormElement>('[data-contact-form]');
+  f?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const r = await api('/api/profile', { ...Object.fromEntries(new FormData(f).entries()), action: 'company-contact' });
+    const err = f.querySelector<HTMLElement>('[data-err]')!;
+    f.querySelector<HTMLElement>('[data-saved]')!.hidden = !r.ok;
+    err.hidden = r.ok;
+    if (!r.ok) err.querySelector('span')!.textContent = r.error;
+  });
+</script>

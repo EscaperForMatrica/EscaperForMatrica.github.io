@@ -1,0 +1,50 @@
+---
+import Shop from '../layouts/Shop.astro';
+import { shop } from '../lib/config';
+---
+<Shop title="О нас" description="PALADA — концентрированная бытовая химия напрямую с завода. Доставка в ПВЗ Ozon и Wildberries, маркировка «Честный знак».">
+  <section class="hero">
+    <div class="wrap" style="min-height: 440px;">
+      <div class="col g24" style="padding: 64px 0;">
+        <span class="kicker"><i class="ic ic-store ic-18"></i>О компании</span>
+        <h1 class="t-h1">Бытовая химия напрямую с завода</h1>
+        <p style="font-size: 18px; max-width: 520px;" class="muted">PALADA производит концентрированные гели для стирки и средства для уборки. Продаём без посредников — поэтому дешевле, чем на маркетплейсах.</p>
+        <div class="row g16" style="margin-top: 8px; flex-wrap: wrap;">
+          <a class="pl-btn pl-btn--primary" href="/catalog" style="padding: 0 32px;">В каталог<i class="ic ic-arrow-r ic-20"></i></a>
+          <a class="pl-btn pl-btn--secondary" href="/b2b">Оптовым покупателям</a>
+        </div>
+      </div>
+      <div class="hero-photo d-only"><img src="/img/ph/canister-navy-3.svg" alt="Продукция PALADA" width="520" height="520" /></div>
+    </div>
+  </section>
+  <section class="sec">
+    <div class="wrap col g48">
+      <h2 class="t-h2">Почему PALADA</h2>
+      <div class="grid4">
+        <div class="adv"><span class="adv-ic"><i class="ic ic-drop ic-28"></i></span><h3 class="t-h3">Концентраты</h3><p class="muted">Одной канистры геля хватает на 165 стирок.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-coin ic-28"></i></span><h3 class="t-h3">Цена завода</h3><p class="muted">До 40% выгоднее, чем на маркетплейсах.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-store ic-28"></i></span><h3 class="t-h3">Привычная доставка</h3><p class="muted">В пункты выдачи Ozon и Wildberries.</p></div>
+        <div class="adv"><span class="adv-ic"><i class="ic ic-shield ic-28"></i></span><h3 class="t-h3">«Честный знак»</h3><p class="muted">Каждая партия зарегистрирована — защита от подделок.</p></div>
+      </div>
+    </div>
+  </section>
+  <section class="sec alt">
+    <div class="wrap">
+      <div class="grid2" style="gap: 24px;">
+        <div class="box col g16" style="padding: 32px;">
+          <h2 class="t-h3">Контакты</h2>
+          <div class="col g4"><a class="ftr-tel" href={`tel:${shop.wholesaleTel}`} style="font-size: 20px;">{shop.wholesalePhone}</a><span class="sm muted">оптовые заказы</span></div>
+          <div class="col g4"><a class="ftr-tel" href={`tel:${shop.supportTel}`} style="font-size: 20px;">{shop.supportPhone}</a><span class="sm muted">WhatsApp и звонки</span></div>
+          <a class="pl-btn pl-btn--primary" href={shop.whatsapp} style="align-self: flex-start;"><i class="ic ic-wa ic-20"></i>Написать в WhatsApp</a>
+        </div>
+        <div class="box col g8" style="padding: 32px;">
+          <h2 class="t-h3" style="margin-bottom: 8px;">Реквизиты</h2>
+          <div class="sum-row"><span class="muted">Наименование</span><span>{shop.legalName}</span></div>
+          <div class="sum-row"><span class="muted">ИНН</span><span>{shop.inn}</span></div>
+          <div class="sum-row"><span class="muted">ОГРН</span><span>{shop.ogrn}</span></div>
+          <div class="sum-row"><span class="muted">Сайт</span><span>{shop.domain}</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Shop>

@@ -1,0 +1,14 @@
+---
+import Shop from '../layouts/Shop.astro';
+Astro.response.status = 404;
+---
+<Shop title="Страница не найдена" noindex mobileHeader={{ kind: 'brand' }}>
+  <main class="wrap" style="padding: 72px 32px 96px;">
+    <section class="box col g16 empty-box" style="max-width: 720px; margin: 0 auto;">
+      <span class="state-ic state-empty"><i class="ic ic-search ic-40"></i></span>
+      <h1 class="t-h3" style="font-size: 26px;">Страница не найдена</h1>
+      <p class="muted" style="max-width: 400px;">Возможно, товар сняли с продажи или ссылка устарела. Посмотрите каталог — там всё актуальное.</p>
+      <div class="row g12" style="margin-top: 8px; flex-wrap: wrap; justify-content: center;"><a class="pl-btn pl-btn--primary" href="/catalog">В каталог</a><a class="pl-btn pl-btn--secondary" href="/">На главную</a></div>
+    </section>
+  </main>
+</Shop>

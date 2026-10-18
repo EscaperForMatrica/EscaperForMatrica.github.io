@@ -1,0 +1,54 @@
+---
+import Shop from '../layouts/Shop.astro';
+import AccountSide from '../components/AccountSide.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { favProducts } from '../lib/favorites';
+import { cartQtyMap } from '../lib/cart';
+import { goods } from '../lib/format';
+
+const items = favProducts(Astro.locals);
+const inCart = cartQtyMap(Astro.locals);
+const inAccount = Boolean(Astro.locals.user && !Astro.locals.company);
+const available = items.filter((p) => p.available && !inCart.has(p.id));
+---
+<Shop title="Избранное" tool="favs" tab="fav" noindex mobileHeader={{ kind: 'title', title: 'Избранное', back: inAccount ? '/account' : '/catalog' }} mobileFooter={false}>
+  <main class="wrap m-pt16" style="padding-top: 40px; padding-bottom: 96px;" data-swap="favs">
+    <h1 class="t-h2 d-only" style="margin-bottom: 32px;">{inAccount ? 'Личный кабинет' : 'Избранное'}</h1>
+    <div class="acc">
+      {inAccount && <AccountSide active="favs" />}
+      <div class="acc-main col g24">
+        {items.length ? (
+          <>
+            <div class="row between g16" style="flex-wrap: wrap;"><h2 class="t-h3">Избранное · {goods(items.length)}</h2>{available.length > 0 && <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" data-all-to-cart={available.map((p) => p.id).join(',')}><i class="ic ic-cart ic-18"></i>Всё в корзину</button>}</div>
+            <div class={inAccount ? 'grid3' : 'grid4'}>
+              {items.map((p) => <ProductCard p={p} fav inCart={inCart.has(p.id)} outLabel="Нет в наличии" favRemove />)}
+            </div>
+          </>
+        ) : (
+          <section class="box col g16 empty-box">
+            <span class="state-ic state-empty"><i class="ic ic-heart ic-40"></i></span>
+            <h2 class="t-h3" style="font-size: 26px;">В избранном пусто</h2>
+            <p class="muted" style="max-width: 380px;">Нажмите на сердечко на карточке товара, чтобы сохранить его здесь.</p>
+            <a class="pl-btn pl-btn--secondary" href="/catalog" style="margin-top: 8px;">Перейти в каталог</a>
+          </section>
+        )}
+      </div>
+    </div>
+  </main>
+</Shop>
+
+<script>
+  import { api, swap, setCartCount } from '../scripts/app';
+  document.addEventListener('click', async (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-all-to-cart]');
+    if (!b) return;
+    b.classList.add('is-loading');
+    let count = 0;
+    for (const id of (b.dataset.allToCart || '').split(',').filter(Boolean)) {
+      const r = await api('/api/cart', { action: 'add', id: Number(id), qty: 1 });
+      if (r.ok) count = r.count;
+    }
+    setCartCount(count);
+    swap('[data-swap="favs"]');
+  });
+</script>

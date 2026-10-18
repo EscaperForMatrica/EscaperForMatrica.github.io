@@ -1,0 +1,165 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import DeliveryPicker from '../../components/DeliveryPicker.astro';
+import PayModal from '../../components/PayModal.astro';
+import { getCart } from '../../lib/cart';
+import { db } from '../../lib/db';
+import { rub, phoneInput } from '../../lib/format';
+
+const { user, company } = Astro.locals;
+if (!company || !user) return Astro.redirect('/b2b');
+const cart = getCart(Astro.locals, 'b2b');
+const last = db.get<any>('select * from orders where company_id = ? order by id desc limit 1', company.id);
+const dType = (last?.delivery_type as 'ozon' | 'wb') || 'ozon';
+const city = last?.city || 'Ростов-на-Дону';
+const pvzId = last?.delivery_type === 'ozon' ? last?.pvz_id : '';
+const wbAddress = last?.delivery_type === 'wb' ? last?.pvz_address : '';
+const lines = cart.lines.filter((l) => l.available);
+const shortVariant = (v: string) => v.replace(' литров', ' л').replace(' литра', ' л').replace(' литр', ' л').replace('Зелёное яблоко · ', '').replace('Вишня · ', '');
+---
+<Shop title="Оформление оптового заказа" header="checkout" step={2} noindex showTab={false} footer={false} cookie={false} mobileHeader={{ kind: 'title', title: 'Оформление заказа', back: '/b2b/catalog', backLabel: 'Назад в каталог' }} pageClass="has-sticky-only" fabsClass="low" mobileWaOnly>
+  <main class="wrap checkout-main" style="padding-top: 40px; padding-bottom: 120px;">
+    <a class="pl-btn pl-btn--text d-only" href="/b2b/catalog" style="padding-left: 0; margin-bottom: 8px;"><i class="ic ic-chev-l ic-20"></i>Вернуться в каталог</a>
+    <div class="row g16 d-only" style="align-items: baseline; margin-bottom: 40px;"><h1 class="t-h2">Оформление заказа</h1><span class="pl-badge pl-badge--accent"><i class="ic ic-store ic-16"></i>Оптовый заказ</span></div>
+    {!lines.length ? (
+      <section class="box col g16 empty-box" style="max-width: 720px; margin: 0 auto;">
+        <span class="state-ic state-empty"><i class="ic ic-cart ic-40"></i></span>
+        <h2 class="t-h3" style="font-size: 26px;">В заказе пока пусто</h2>
+        <p class="muted" style="max-width: 380px;">Добавьте коробки в оптовом каталоге — сумма и экономия посчитаются сразу.</p>
+        <a class="pl-btn pl-btn--primary" href="/b2b/catalog" style="margin-top: 8px;">В каталог</a>
+      </section>
+    ) : (
+      <form class="two-col" data-b2b-checkout novalidate data-items={cart.itemsTotal} data-count={cart.count}>
+        <div class="col g32 checkout-blocks">
+          <section class="box" style="padding: 32px;">
+            <div class="blk-h"><span class="blk-n">1</span><h2 class="t-h3 grow">Покупатель</h2><a class="sm link d-only" href="/b2b/account?tab=company">Реквизиты в кабинете</a></div>
+            <div class="col g8" style="background: var(--surface-alt); border-radius: 8px; padding: 16px 20px; margin-bottom: 20px;">
+              <b style="font-weight: 600;">{company.name}</b>
+              <span class="sm muted">ИНН {company.inn}{company.kpp && ` · КПП ${company.kpp}`}{company.address && ` · ${company.address}`}</span>
+            </div>
+            <div class="grid-form">
+              <div class="pl-field"><label class="pl-field__label" for="b-name">Контактное лицо</label><input class="pl-input" id="b-name" name="name" value={user.name} autocomplete="name" /><span class="pl-field__error" hidden data-err="name"><i class="ic ic-alert ic-16"></i>Укажите фамилию и имя</span></div>
+              <div class="pl-field"><label class="pl-field__label" for="b-phone">Телефон</label><input class="pl-input" id="b-phone" name="phone" type="tel" value={phoneInput(user.phone)} data-phone /><span class="pl-field__error" hidden data-err="phone"><i class="ic ic-alert ic-16"></i>Проверьте номер телефона</span></div>
+              <div class="pl-field span-2"><label class="pl-field__label" for="b-email">Email для счетов и документов</label><input class="pl-input" id="b-email" name="email" type="email" value={user.email} /><span class="pl-field__error" hidden data-err="email"><i class="ic ic-alert ic-16"></i>Проверьте адрес почты</span></div>
+            </div>
+          </section>
+          <section class="box" style="padding: 32px;">
+            <div class="blk-h"><span class="blk-n">2</span><h2 class="t-h3">Доставка</h2></div>
+            <DeliveryPicker type={dType} city={city} pvzId={pvzId} wbAddress={wbAddress} boxes={cart.boxes} collapsible />
+          </section>
+          <section class="box" style="padding: 32px;">
+            <div class="blk-h"><span class="blk-n">3</span><h2 class="t-h3">Оплата</h2></div>
+            <div class="col g12" role="radiogroup" aria-label="Способ оплаты">
+              <label class="pl-option is-selected" style="align-items: center; padding: 20px;"><input type="radio" name="payment" value="invoice" checked /><span class="pl-radio" style="margin: 0;"></span><span class="adv-ic" style="width: 44px; height: 44px; margin: 0; flex: none;"><i class="ic ic-doc"></i></span><span class="col grow"><b style="font-weight: 600;">Счёт на юрлицо</b><span class="sm muted">Безналичная оплата. Счёт в PDF — сразу после оформления, закрывающие документы — в кабинете</span></span></label>
+              <label class="pl-option" style="align-items: center; padding: 20px;"><input type="radio" name="payment" value="card" /><span class="pl-radio" style="margin: 0;"></span><span class="adv-ic" style="width: 44px; height: 44px; margin: 0; flex: none;"><i class="ic ic-card"></i></span><span class="col grow"><b style="font-weight: 600;">Карта или СБП</b><span class="sm muted">Оплата онлайн, заказ сразу уходит в сборку</span></span></label>
+            </div>
+            <div class="pl-note" style="margin-top: 16px;" data-pay-note><i class="ic ic-clock"></i><span>Заказ уйдёт в сборку после поступления оплаты по счёту.</span></div>
+          </section>
+          <section class="box" style="padding: 32px;">
+            <div class="blk-h"><span class="blk-n">4</span><h2 class="t-h3">Согласия</h2></div>
+            <div class="col g16">
+              <div class="col g4">
+                <label class="pl-check is-checked"><input type="checkbox" name="offer" checked /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Принимаю условия <a href="/legal/offer-b2b" target="_blank">оферты для юридических лиц и ИП</a> <span class="pl-check__req">— обязательно</span></span></label>
+                <span class="pl-field__error" style="padding-left: 32px;" hidden data-err="offer"><i class="ic ic-alert ic-16"></i>Нужно принять условия, чтобы оформить заказ</span>
+              </div>
+              <div class="col g4">
+                <label class={`pl-check ${user.pd_consent_at ? 'is-checked' : ''}`}><input type="checkbox" name="pd" checked={Boolean(user.pd_consent_at)} /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Даю согласие на <a href="/legal/consent" target="_blank">обработку персональных данных</a> <span class="pl-check__req">— обязательно</span></span></label>
+                <span class="pl-field__error" style="padding-left: 32px;" hidden data-err="pd"><i class="ic ic-alert ic-16"></i>Без согласия мы не сможем доставить заказ</span>
+              </div>
+              <label class={`pl-check ${user.newsletter ? 'is-checked' : ''}`}><input type="checkbox" name="newsletter" checked={Boolean(user.newsletter)} /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Хочу получать новости и оптовые предложения</span></label>
+            </div>
+          </section>
+        </div>
+
+        <aside class="box col sticky-side" style="padding: 28px; gap: 20px;">
+          <h2 class="t-h3">Ваш заказ</h2>
+          <div class="col g12">
+            {lines.map((l) => <div class="sum-row sm"><span>{l.product.name}, {shortVariant(l.product.variant)}<br /><span class="muted">{l.boxes} кор. × {l.product.box_qty} шт. × {rub(l.price)}</span></span><span style="white-space: nowrap;">{rub(l.total)}</span></div>)}
+          </div>
+          <div class="hr"></div>
+          <div class="col g12">
+            <div class="sum-row"><span class="muted">Товары, {cart.count} шт.</span><span>{rub(cart.itemsTotal)}</span></div>
+            <div class="sum-row"><span class="muted" data-dlabel>Доставка · ПВЗ Ozon</span><span data-dcost>—</span></div>
+          </div>
+          <div class="hr"></div>
+          <div class="sum-total"><span class="t-h4">К оплате</span><b data-total>{rub(cart.itemsTotal)}</b></div>
+          <button class="pl-btn pl-btn--primary pl-btn--block d-only" type="submit" data-submit><i class="ic ic-doc ic-20"></i>Выставить счёт</button>
+          <p class="xs muted d-only" style="text-align: center;" data-submit-note>Счёт придёт на {user.email || 'вашу почту'} и появится в кабинете</p>
+        </aside>
+        <div class="m-sticky bottom m-only">
+          <div class="col" style="line-height: 1.2;"><span class="xs muted">К оплате</span><b style="font-size: 20px; font-weight: 600; color: var(--ink-strong);" data-total>{rub(cart.itemsTotal)}</b></div>
+          <button class="pl-btn pl-btn--primary grow" type="submit" data-submit-m>Выставить счёт</button>
+        </div>
+      </form>
+    )}
+  </main>
+  <PayModal slot="after" />
+</Shop>
+<style is:global>
+  @media (max-width: 767px) {
+    .checkout-main { padding-top: 16px !important; }
+    .page:has(.checkout-main) { background: var(--surface-alt); }
+    .checkout-blocks { gap: 12px !important; }
+    .checkout-blocks > .box { padding: 20px !important; }
+  }
+</style>
+<script>
+  import { api, toast } from '../../scripts/app';
+  import { rubJs } from '../../scripts/fmt';
+  const form = document.querySelector<HTMLFormElement>('[data-b2b-checkout]');
+  if (form) {
+    const items = Number(form.dataset.items);
+    let delivery: any = null;
+    const pay = () => (form.querySelector<HTMLInputElement>('input[name="payment"]:checked')?.value || 'invoice');
+    const sync = () => {
+      const cost = delivery?.cost ?? null;
+      const total = items + (cost ?? 0);
+      form.querySelectorAll('[data-dcost]').forEach((el) => (el.textContent = cost === null ? 'выберите ПВЗ' : rubJs(cost)));
+      form.querySelectorAll('[data-dlabel]').forEach((el) => (el.textContent = `Доставка · ${delivery?.type === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}`));
+      form.querySelectorAll('[data-total]').forEach((el) => (el.textContent = rubJs(total)));
+      const invoice = pay() === 'invoice';
+      const d = form.querySelector<HTMLElement>('[data-submit]')!;
+      d.innerHTML = invoice ? '<i class="ic ic-doc ic-20"></i>Выставить счёт' : `Оплатить ${rubJs(total)}`;
+      form.querySelector<HTMLElement>('[data-submit-m]')!.textContent = invoice ? 'Выставить счёт' : 'Оплатить';
+      form.querySelector<HTMLElement>('[data-submit-note]')!.hidden = !invoice;
+      form.querySelector<HTMLElement>('[data-pay-note]')!.hidden = !invoice;
+    };
+    form.addEventListener('delivery-change', (e: any) => {
+      delivery = e.detail;
+      sync();
+    });
+    const picker = form.querySelector<any>('[data-delivery]');
+    if (picker?.deliveryState) delivery = picker.deliveryState();
+    form.addEventListener('change', sync);
+    const showErr = (k: string, on: boolean) => {
+      const el = form.querySelector<HTMLElement>(`[data-err="${k}"]`);
+      if (el) el.hidden = !on;
+      form.querySelector(`[name="${k}"].pl-input`)?.classList.toggle('is-error', on);
+    };
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = (k: string) => (form.elements.namedItem(k) as HTMLInputElement).value.trim();
+      const errs: string[] = [];
+      if (v('name').split(/\s+/).length < 2) errs.push('name');
+      if (v('phone').replace(/\D/g, '').length !== 11) errs.push('phone');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v('email'))) errs.push('email');
+      if (!delivery?.valid) errs.push(delivery?.type === 'wb' ? 'wb' : 'pvz');
+      if (!(form.elements.namedItem('offer') as HTMLInputElement).checked) errs.push('offer');
+      if (!(form.elements.namedItem('pd') as HTMLInputElement).checked) errs.push('pd');
+      ['name', 'phone', 'email', 'wb', 'pvz', 'offer', 'pd'].forEach((k) => showErr(k, errs.includes(k)));
+      if (errs.includes('pvz')) {
+        form.querySelector<HTMLElement>('[data-summary]')?.setAttribute('hidden', '');
+        form.querySelector<HTMLElement>('[data-full]')?.removeAttribute('hidden');
+      }
+      if (errs.length) return form.querySelector(`[data-err="${errs[0]}"]`)?.closest('section')?.scrollIntoView({ behavior: 'smooth' });
+      const btns = form.querySelectorAll('[data-submit], [data-submit-m]');
+      btns.forEach((b) => b.classList.add('is-loading'));
+      const r = await api('/api/b2b/checkout', Object.fromEntries(new FormData(form).entries()));
+      btns.forEach((b) => b.classList.remove('is-loading'));
+      if (!r.ok) return toast(r.error || 'Не удалось оформить заказ', 'error');
+      if (r.redirect) return void (location.href = r.redirect);
+      (window as any).palada.openPay({ orderId: r.orderId, total: r.total, count: r.count });
+    });
+    sync();
+  }
+</script>

@@ -1,0 +1,213 @@
+---
+import Shop from '../layouts/Shop.astro';
+import { getCart } from '../lib/cart';
+import { rub, goods } from '../lib/format';
+import { imageUrl } from '../lib/images';
+import { cardMeta } from '../lib/catalog';
+import { cartMode } from '../lib/session';
+
+if (cartMode(Astro.locals) === 'b2b') return Astro.redirect('/b2b/checkout');
+const cart = getCart(Astro.locals);
+const empty = cart.lines.length === 0;
+const title = empty ? 'Корзина' : `Корзина · ${goods(cart.count)}`;
+---
+<Shop
+  title="Корзина"
+  tool="cart"
+  tab="cart"
+  noindex
+  mobileHeader={empty ? { kind: 'title', title: 'Корзина' } : { kind: 'title', title, back: '/catalog', backLabel: 'Продолжить покупки', action: { icon: 'trash', label: 'Очистить корзину', attr: 'data-cart-clear' } }}
+  fabsClass={empty ? '' : 'up'}
+  pageClass={empty ? '' : 'has-sticky'}
+>
+  <main class="wrap m-pt0" style="padding-top: 40px; padding-bottom: 120px;" data-swap="cart">
+    {empty ? (
+      <>
+        <section class="box col g16 empty-box d-only" style="max-width: 720px; margin: 32px auto 0;">
+          <span class="state-ic state-empty"><i class="ic ic-cart ic-40"></i></span>
+          <h1 class="t-h3" style="font-size: 26px;">В корзине пока пусто</h1>
+          <p class="muted" style="max-width: 380px;">Загляните в каталог — одной канистры геля хватает на 165 стирок.</p>
+          <a class="pl-btn pl-btn--primary" href="/catalog" style="margin-top: 8px;">В каталог</a>
+        </section>
+        <div class="col g16 m-only" style="padding-top: 80px; align-items: center; text-align: center;">
+          <span class="state-ic state-empty" style="width: 80px; height: 80px;"><i class="ic ic-cart ic-40"></i></span>
+          <h1 class="m-h2" style="font-size: 24px;">В корзине пока пусто</h1>
+          <p class="muted">Загляните в каталог — одной канистры геля хватает на 165 стирок.</p>
+          <a class="pl-btn pl-btn--primary pl-btn--block" href="/catalog" style="margin-top: 8px;">В каталог</a>
+        </div>
+      </>
+    ) : (
+      <>
+        <div class="row g16 d-only" style="align-items: baseline; margin-bottom: 32px;"><h1 class="t-h2">Корзина</h1><span class="muted">{goods(cart.count)}</span></div>
+        <div class="two-col">
+          <div class="col">
+            <div class="hr d-only"></div>
+            {cart.lines.map((l) => (
+              <div class={`line cart-line ${l.available ? '' : 'is-off'}`} data-line={l.product.id}>
+                <a class="line-img" href={`/product/${l.product.slug}`}><img src={imageUrl(l.product.images[0])} alt="" width="96" height="96" /></a>
+                <div class="cl-body">
+                  <div class="col g4 cl-info">
+                    <a class="t-h4" href={`/product/${l.product.slug}`}>{l.product.name}</a>
+                    <span class="sm muted d-only">{cardMeta(l.product)}</span>
+                    <span class="sm muted d-only">{l.available ? `${rub(l.price)} / шт.` : ''}</span>
+                    <span class="xs muted m-only">{l.product.variant} · {rub(l.price)} / шт.</span>
+                    {l.note && <span class="xs" style={`color: ${l.available ? 'var(--warm-ink)' : 'var(--ink-muted)'}; font-weight: 600;`}>{l.note}</span>}
+                  </div>
+                  <div class="cl-controls">
+                    {l.available ? (
+                      <div class="pl-qty pl-qty--sm" data-cart-qty={l.product.id} data-max={l.product.stock}>
+                        <button type="button" aria-label="Меньше" data-d="-1" disabled={l.qty <= 1}><i class="ic ic-minus ic-18"></i></button>
+                        <span>{l.qty}</span>
+                        <button type="button" aria-label="Больше" data-d="1" disabled={l.qty >= l.product.stock}><i class="ic ic-plus ic-18"></i></button>
+                      </div>
+                    ) : <span></span>}
+                    <span class="cl-end">
+                      <span class="col cl-sum" style="align-items: flex-end; min-width: 110px;">
+                        {l.available ? <span class="pl-price">{rub(l.total)}</span> : <span class="pl-price muted">—</span>}
+                        {l.available && l.oldTotal && <span class="pl-price-old d-only" style="margin: 0;">{rub(l.oldTotal)}</span>}
+                      </span>
+                      <button class="pl-icon-btn" type="button" aria-label="Удалить" data-cart-remove={l.product.id}><i class="ic ic-trash ic-20"></i></button>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div class="row between d-only" style="padding-top: 20px;"><a class="pl-btn pl-btn--text" href="/catalog" style="padding-left: 0;"><i class="ic ic-chev-l ic-20"></i>Продолжить покупки</a><button class="pl-btn pl-btn--text" type="button" style="color: var(--ink-muted);" data-cart-clear>Очистить корзину</button></div>
+          </div>
+
+          <aside class="box col sticky-side d-only" style="padding: 28px; gap: 20px;">
+            <h2 class="t-h3">Ваш заказ</h2>
+            <div class="col g8">
+              <label class="pl-field__label" for="promo-d">Промокод</label>
+              {cart.promoCode && !cart.promoError ? (
+                <div class="pl-promo-applied"><span class="row g8"><i class="ic ic-check ic-18"></i><b>{cart.promoCode}</b> — {cart.promoLabel}</span><button class="pl-icon-btn" type="button" aria-label="Убрать промокод" style="width: 28px; height: 28px; background: transparent;" data-promo-remove><i class="ic ic-close ic-16"></i></button></div>
+              ) : (
+                <form class="col g8" data-promo-form>
+                  <div class="pl-promo"><input id="promo-d" class={`pl-input ${cart.promoError ? 'is-error' : ''}`} name="code" value={cart.promoCode || ''} autocomplete="off" spellcheck="false" /><button class="pl-btn pl-btn--secondary" type="submit">Применить</button></div>
+                  <span class="pl-field__error" hidden={!cart.promoError} data-promo-error><i class="ic ic-alert ic-16"></i><span>{cart.promoError}</span></span>
+                </form>
+              )}
+            </div>
+            <div class="hr"></div>
+            <div class="col g12">
+              <div class="sum-row"><span class="muted">Товары, {cart.count} шт.</span><span>{rub(cart.itemsTotal)}</span></div>
+              {cart.discount > 0 && <div class="sum-row"><span class="muted">Промокод {cart.promoCode}</span><span class="save">{rub(-cart.discount)}</span></div>}
+              <div class="sum-row"><span class="muted">Доставка</span><span class="muted">при оформлении</span></div>
+            </div>
+            <div class="hr"></div>
+            <div class="sum-total"><span class="t-h4">Итого</span><b>{rub(cart.total)}</b></div>
+            {cart.savings + cart.discount > 0 && <span class="sm save" style="margin-top: -12px;">Вы экономите {rub(cart.savings + cart.discount)}</span>}
+            <a class={`pl-btn pl-btn--primary pl-btn--block ${cart.count ? '' : 'is-disabled'}`} href="/checkout" aria-disabled={cart.count ? undefined : 'true'}>Перейти к оформлению</a>
+            <div class="row g8 xs muted" style="justify-content: center;"><i class="ic ic-card ic-18"></i>Карта или СБП · <i class="ic ic-shield ic-18"></i>«Честный знак»</div>
+          </aside>
+
+          <div class="m-only">
+            <div class="col g8" style="padding-top: 24px;">
+              <label class="pl-field__label" for="promo-m">Промокод</label>
+              {cart.promoCode && !cart.promoError ? (
+                <div class="pl-promo-applied"><span class="row g8"><i class="ic ic-check ic-18"></i><b>{cart.promoCode}</b> — {cart.promoLabel}</span><button class="pl-icon-btn" type="button" aria-label="Убрать промокод" style="width: 28px; height: 28px; background: transparent;" data-promo-remove><i class="ic ic-close ic-16"></i></button></div>
+              ) : (
+                <form class="col g8" data-promo-form>
+                  <div class="pl-promo"><input id="promo-m" class={`pl-input ${cart.promoError ? 'is-error' : ''}`} name="code" value={cart.promoCode || ''} autocomplete="off" spellcheck="false" /><button class="pl-btn pl-btn--secondary" type="submit">Применить</button></div>
+                  <span class="pl-field__error" hidden={!cart.promoError} data-promo-error><i class="ic ic-alert ic-16"></i><span>{cart.promoError}</span></span>
+                </form>
+              )}
+            </div>
+            <div style="padding-top: 24px;">
+              <div class="box col g12" style="padding: 20px;">
+                <div class="sum-row"><span class="muted">Товары, {cart.count} шт.</span><span>{rub(cart.itemsTotal)}</span></div>
+                <div class="sum-row"><span class="muted">Промокод</span>{cart.discount > 0 ? <span class="save">{rub(-cart.discount)}</span> : <span class="muted">—</span>}</div>
+                <div class="sum-row"><span class="muted">Доставка</span><span class="muted">при оформлении</span></div>
+                <div class="hr"></div>
+                <div class="sum-total"><span class="t-h4">Итого</span><b>{rub(cart.total)}</b></div>
+                {cart.savings + cart.discount > 0 && <span class="sm save" style="margin-top: -4px;">Вы экономите {rub(cart.savings + cart.discount)}</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="m-sticky m-only">
+          <div class="col" style="line-height: 1.2;"><span class="xs muted">Итого</span><b style="font-size: 20px; font-weight: 600; color: var(--ink-strong);">{rub(cart.total)}</b></div>
+          <a class="pl-btn pl-btn--primary grow" href="/checkout">Оформить</a>
+        </div>
+      </>
+    )}
+  </main>
+</Shop>
+
+<style is:global>
+  /* Строка корзины: десктоп — 5 колонок из макета, мобайл — картинка + блок справа */
+  .cart-line .cl-body, .cart-line .cl-controls, .cart-line .cl-end { display: contents; }
+  .cart-line.is-off .line-img, .cart-line.is-off .cl-info a { opacity: .6; }
+  @media (max-width: 767px) {
+    .cart-line .cl-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .cart-line .cl-controls { display: flex; align-items: center; justify-content: space-between; }
+    .cart-line .cl-end { display: inline-flex; align-items: center; gap: 4px; }
+    .cart-line .cl-sum { min-width: 0 !important; }
+    .cart-line .cl-sum .pl-price { font-size: 18px; }
+    .cart-line .t-h4 { font-size: 15px; }
+  }
+</style>
+
+<script>
+  import { api, swap, setCartCount, toast } from '../scripts/app';
+
+  const refresh = async () => {
+    await swap('[data-swap="cart"]', '.m-title');
+    if (!document.querySelector('[data-line]')) location.reload();
+  };
+
+  document.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const step = t.closest<HTMLButtonElement>('[data-cart-qty] [data-d]');
+    if (step) {
+      const box = step.closest<HTMLElement>('[data-cart-qty]')!;
+      const span = box.querySelector('span')!;
+      const qty = Number(span.textContent) + Number(step.dataset.d);
+      if (qty < 1) return;
+      box.classList.add('is-busy');
+      span.textContent = String(qty);
+      const r = await api('/api/cart', { action: 'set', id: Number(box.dataset.cartQty), qty });
+      if (!r.ok) toast(r.error, 'error');
+      else {
+        setCartCount(r.count);
+        if (r.note) toast(r.note);
+      }
+      return refresh();
+    }
+    const rm = t.closest<HTMLElement>('[data-cart-remove]');
+    if (rm) {
+      const r = await api('/api/cart', { action: 'remove', id: Number(rm.dataset.cartRemove) });
+      setCartCount(r.count ?? 0);
+      return refresh();
+    }
+    if (t.closest('[data-cart-clear]')) {
+      if (!confirm('Очистить корзину?')) return;
+      await api('/api/cart', { action: 'clear' });
+      setCartCount(0);
+      return refresh();
+    }
+    if (t.closest('[data-promo-remove]')) {
+      await api('/api/cart', { action: 'promo-remove' });
+      return refresh();
+    }
+  });
+
+  document.addEventListener('submit', async (e) => {
+    const form = (e.target as HTMLElement).closest<HTMLFormElement>('[data-promo-form]');
+    if (!form) return;
+    e.preventDefault();
+    const input = form.querySelector('input')!;
+    const err = form.querySelector<HTMLElement>('[data-promo-error]')!;
+    const btn = form.querySelector('button')!;
+    btn.classList.add('is-loading');
+    const r = await api('/api/cart', { action: 'promo', code: input.value });
+    btn.classList.remove('is-loading');
+    if (!r.ok) {
+      input.classList.add('is-error');
+      err.hidden = false;
+      err.querySelector('span')!.textContent = r.error;
+      return;
+    }
+    refresh();
+  });
+</script>

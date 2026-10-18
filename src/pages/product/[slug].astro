@@ -1,0 +1,236 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { productBySlug, relatedProducts } from '../../lib/catalog';
+import { cartQtyMap } from '../../lib/cart';
+import { favIds } from '../../lib/favorites';
+import { galleryUrls } from '../../lib/images';
+import { rub } from '../../lib/format';
+import { cartMode } from '../../lib/session';
+import { OZON_MIN_PRICE, WB_PRICE } from '../../lib/delivery';
+import { config } from '../../lib/config';
+
+const p = productBySlug(Astro.params.slug || '');
+const isAdmin = Astro.locals.user?.role === 'admin';
+if (!p || ((!p.visible || p.price === null) && !isAdmin)) {
+  return Astro.rewrite('/404');
+}
+const b2b = cartMode(Astro.locals) === 'b2b';
+const related = relatedProducts(p, 4);
+const inCart = cartQtyMap(Astro.locals);
+const favs = favIds(Astro.locals);
+const isFav = favs.has(p.id);
+const gallery = galleryUrls(p.images);
+const usage = p.usage.split('\n').map((s) => s.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean);
+const price = b2b ? p.wholesale_price ?? p.price : p.price;
+const subtitle = p.subtitle || (p.washes ? `${p.variant} · ${p.washes} стирок` : p.variant);
+const specs = p.specs.filter(([k, v]) => k && v);
+const mobileSpecs = specs.filter(([k]) => !['Артикул', 'Подходит для'].includes(k)).map(([k, v]) => [k.replace('Габариты, ', ''), v]);
+const alt = `${p.name} PALADA${p.variant ? ', ' + p.variant : ''}`;
+const ld = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: `${p.name}, ${p.variant}`,
+  description: p.description,
+  sku: p.sku || undefined,
+  brand: { '@type': 'Brand', name: 'PALADA' },
+  image: config.siteUrl ? gallery.map((g) => config.siteUrl + g) : undefined,
+  offers: { '@type': 'Offer', priceCurrency: 'RUB', price: p.price, availability: p.available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' },
+};
+---
+<Shop title={`${p.name}, ${p.variant}`} description={p.description.slice(0, 160)} nav="catalog" tab="catalog" mobileHeader={{ kind: 'title', title: p.category_name || 'Каталог', back: p.category_slug ? `/catalog?cat=${p.category_slug}` : '/catalog', action: { icon: isFav ? 'heart-fill' : 'heart', label: isFav ? 'Убрать из избранного' : 'В избранное', data: { 'data-fav': String(p.id) }, on: isFav } }} fabsClass="up" pageClass="has-sticky">
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} />
+  <main class="wrap d-only" style="padding-bottom: 96px;">
+    <nav class="crumbs"><a href="/">Главная</a><i class="ic ic-chev-r"></i><a href="/catalog">Каталог</a>{p.category_slug && <><i class="ic ic-chev-r"></i><a href={`/catalog?cat=${p.category_slug}`}>{p.category_name}</a></>}<i class="ic ic-chev-r"></i><span>{p.name}</span></nav>
+    {!p.visible && <div class="dev-note" style="margin-bottom: 16px;"><i class="ic ic-eye-off ic-18"></i>Товар скрыт с сайта — страницу видите только вы как администратор.</div>}
+    <div class="pdp">
+      <div class="gal" data-gallery>
+        <div class="thumbs">
+          {gallery.map((src, i) => <button class={`thumb ${i === 0 ? 'on' : ''}`} type="button" data-thumb={i} aria-label={`Фото ${i + 1}`}><img src={src} alt="" width="88" height="88" /></button>)}
+        </div>
+        <div class="gal-main">
+          <img src={gallery[0]} alt={alt} width="600" height="600" data-main data-srcs={JSON.stringify(gallery)} />
+          {p.available ? p.discount > 0 && <span class="pl-badge pl-badge--discount" style="position: absolute; top: 20px; left: 20px;">−{p.discount}%</span> : <span class="pl-badge pl-badge--neutral" style="position: absolute; top: 20px; left: 20px;">Нет в наличии</span>}
+          {gallery.length > 1 && <span class="row g8" style="position: absolute; bottom: 20px; right: 20px;"><button class="pl-icon-btn" type="button" aria-label="Предыдущее фото" style="box-shadow: var(--shadow-card);" data-step="-1"><i class="ic ic-chev-l ic-20"></i></button><button class="pl-icon-btn" type="button" aria-label="Следующее фото" style="box-shadow: var(--shadow-card);" data-step="1"><i class="ic ic-chev-r ic-20"></i></button></span>}
+        </div>
+      </div>
+      <div class="col g24">
+        <div class="col g8">
+          {p.sku && <span class="sm muted">Артикул {p.sku}</span>}
+          <h1 class="t-h2" style="font-size: 40px;">{p.name}</h1>
+          <span class="muted">{subtitle}</span>
+        </div>
+        <div class="row g12" style="align-items: baseline;">
+          <span class="pl-price" style="font-size: 32px;">{rub(price)}</span>
+          {b2b ? <span class="pl-badge pl-badge--accent"><i class="ic ic-store ic-16"></i>Опт · коробка {p.box_qty} шт.</span> : p.old_price && p.old_price > (p.price ?? 0) && <><span class="pl-price-old" style="font-size: 18px;">{rub(p.old_price)}</span><span class="pl-badge pl-badge--discount">−{p.discount}%</span></>}
+        </div>
+        <div class="row g12">
+          {p.available ? (
+            <>
+              <div class="pl-qty" data-stepper data-step-size={b2b ? p.box_qty : 1} data-max={p.stock}><button type="button" aria-label="Меньше" data-dec disabled><i class="ic ic-minus ic-18"></i></button><input id="qty-d" type="number" inputmode="numeric" value={b2b ? p.box_qty : 1} min="1" aria-label="Количество" /><button type="button" aria-label="Больше" data-inc><i class="ic ic-plus ic-18"></i></button></div>
+              {inCart.has(p.id)
+                ? <a class="pl-btn pl-btn--secondary grow" href={b2b ? '/b2b/checkout' : '/cart'}><i class="ic ic-check ic-20"></i>В корзине · {inCart.get(p.id)} шт.</a>
+                : <button class="pl-btn pl-btn--primary grow" type="button" data-add={p.id} data-qty-from="#qty-d" data-unit="pcs" data-cart-href={b2b ? '/b2b/checkout' : '/cart'}><i class="ic ic-cart ic-20"></i>В корзину</button>}
+            </>
+          ) : (
+            <button class="pl-btn pl-btn--primary grow is-disabled" type="button" disabled>Нет в наличии</button>
+          )}
+          <button class={`pl-icon-btn ${isFav ? 'is-on' : ''}`} type="button" data-fav={p.id} aria-pressed={isFav ? 'true' : 'false'} aria-label={isFav ? 'Убрать из избранного' : 'В избранное'} style="width: 48px; height: 48px; border: 1px solid var(--line); border-radius: 8px;"><i class={`ic ${isFav ? 'ic-heart-fill' : 'ic-heart'}`}></i></button>
+        </div>
+        <div class="col g12 box-line" style="padding: 20px;">
+          <div class="row g12"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">Доставка в ПВЗ Ozon</b> — от {rub(OZON_MIN_PRICE)}, 2–4 дня</span></div>
+          <div class="row g12"><i class="ic ic-truck ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Wildberries</b> — {rub(WB_PRICE)}, отправку оформит менеджер</span></div>
+          <div class="row g12"><i class="ic ic-shield ic-20" style="color: var(--accent-ink);"></i><span class="sm">Маркировка «Честный знак»</span></div>
+        </div>
+        <p>{p.description}</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 80px;" class="col g32" data-tabs>
+      <div class="tabs" role="tablist">
+        <button class="tab on" type="button" role="tab" aria-selected="true" data-tab="0">Характеристики</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="1">Способ применения</button>
+        {p.composition && <button class="tab" type="button" role="tab" aria-selected="false" data-tab="2">Состав</button>}
+      </div>
+      <div role="tabpanel" data-panel="0" class="pdp-info">
+        <dl class="spec">{specs.map(([k, v]) => <><dt>{k}</dt><dd>{v}</dd></>)}</dl>
+        <div class="col g16">
+          <h3 class="t-h3">Способ применения</h3>
+          <div class="col g16">{usage.map((u, i) => <div class="row g16" style="align-items: flex-start;"><span class="step-n">{i + 1}</span><p>{u}</p></div>)}</div>
+          {p.usage_note && <p class="sm muted">{p.usage_note}</p>}
+        </div>
+      </div>
+      <div role="tabpanel" data-panel="1" hidden>
+        <div class="col g16" style="max-width: 720px;">
+          {usage.map((u, i) => <div class="row g16" style="align-items: flex-start;"><span class="step-n">{i + 1}</span><p>{u}</p></div>)}
+          {p.usage_note && <p class="sm muted">{p.usage_note}</p>}
+        </div>
+      </div>
+      {p.composition && <div role="tabpanel" data-panel="2" hidden><p style="max-width: 720px;">{p.composition}</p></div>}
+    </div>
+
+    {related.length > 0 && (
+      <div style="margin-top: 96px;" class="col g32">
+        <h2 class="t-h2" style="font-size: 32px;">С этим покупают</h2>
+        <div class="grid4">{related.map((r) => <ProductCard p={r} inCart={inCart.has(r.id)} fav={favs.has(r.id)} />)}</div>
+      </div>
+    )}
+  </main>
+
+  <!-- Мобайл -->
+  <main class="m-only" style="padding-bottom: 40px;">
+    <div style="position: relative; aspect-ratio: 1 / 1; background: var(--surface-alt); overflow: hidden;" data-swipe>
+      <div class="row" style="height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; align-items: stretch;" data-track>
+        {gallery.map((src, i) => <img src={src} alt={i === 0 ? alt : ''} style="width: 100%; height: 100%; display: block; flex: none; scroll-snap-align: start;" width="390" height="390" />)}
+      </div>
+      {p.available ? p.discount > 0 && <span class="pl-badge pl-badge--discount" style="position: absolute; top: 16px; left: 16px;">−{p.discount}%</span> : <span class="pl-badge pl-badge--neutral" style="position: absolute; top: 16px; left: 16px;">Нет в наличии</span>}
+      {gallery.length > 1 && <span class="row g8" style="position: absolute; bottom: 14px; left: 0; right: 0; justify-content: center;" data-dots>{gallery.map((_, i) => <span style={i === 0 ? 'width: 20px; height: 6px; border-radius: 3px; background: var(--accent); transition: width .2s;' : 'width: 6px; height: 6px; border-radius: 3px; background: var(--line-strong); transition: width .2s;'}></span>)}</span>}
+    </div>
+    <div class="mp col g16" style="padding-top: 20px;">
+      {p.sku && <span class="xs muted">Артикул {p.sku}</span>}
+      <h1 class="m-h2" style="font-size: 26px;">{p.name}</h1>
+      <span class="sm muted">{subtitle}</span>
+      <div class="row g12" style="align-items: baseline;"><span class="pl-price" style="font-size: 28px;">{rub(price)}</span>{!b2b && p.old_price && p.old_price > (p.price ?? 0) && <span class="pl-price-old" style="font-size: 16px;">{rub(p.old_price)}</span>}</div>
+      <div class="col g12 box-line" style="padding: 16px;">
+        <div class="row g12"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Ozon</b> — от {rub(OZON_MIN_PRICE)}, 2–4 дня</span></div>
+        <div class="row g12"><i class="ic ic-truck ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Wildberries</b> — {rub(WB_PRICE)}</span></div>
+        <div class="row g12"><i class="ic ic-shield ic-20" style="color: var(--accent-ink);"></i><span class="sm">«Честный знак»</span></div>
+      </div>
+      <p>{p.description}</p>
+    </div>
+    <div class="mp col g12" style="padding-top: 32px;">
+      <h2 class="t-h3">Характеристики</h2>
+      <div class="col">{mobileSpecs.map(([k, v]) => <div class="row between sm g16" style="padding: 12px 0; border-bottom: 1px solid var(--line);"><span class="muted">{k}</span><span style="text-align: right;">{v}</span></div>)}</div>
+    </div>
+    <div class="mp col g16" style="padding-top: 32px;">
+      <h2 class="t-h3">Способ применения</h2>
+      {usage.map((u, i) => <div class="row g12" style="align-items: flex-start;"><span class="step-n">{i + 1}</span><p class="sm">{u}</p></div>)}
+    </div>
+    {p.composition && <div class="mp col g8" style="padding-top: 32px;"><h2 class="t-h3">Состав</h2><p class="sm">{p.composition}</p></div>}
+    {related.length > 0 && (
+      <div class="col g16" style="padding-top: 40px;">
+        <h2 class="t-h3 mp">С этим покупают</h2>
+        <div class="m-scroll" style="gap: 12px;">{related.map((r) => <ProductCard p={r} compact style="flex: 0 0 168px;" inCart={inCart.has(r.id)} />)}</div>
+      </div>
+    )}
+  </main>
+
+  <div class="m-sticky m-only" slot="after">
+    {p.available ? (
+      inCart.has(p.id) ? (
+        <a class="pl-btn pl-btn--secondary grow" href={b2b ? '/b2b/checkout' : '/cart'}><i class="ic ic-check ic-20"></i>В корзине · {inCart.get(p.id)} шт.</a>
+      ) : (
+        <>
+          <div class="pl-qty pl-qty--sm" style="height: 48px;" data-stepper data-step-size={b2b ? p.box_qty : 1} data-max={p.stock} data-price={price}><button type="button" aria-label="Меньше" data-dec disabled><i class="ic ic-minus ic-18"></i></button><input id="qty-m" type="number" inputmode="numeric" value={b2b ? p.box_qty : 1} min="1" aria-label="Количество" /><button type="button" aria-label="Больше" data-inc><i class="ic ic-plus ic-18"></i></button></div>
+          <button class="pl-btn pl-btn--primary grow" type="button" data-add={p.id} data-qty-from="#qty-m" data-unit="pcs" data-cart-href={b2b ? '/b2b/checkout' : '/cart'} data-total-label>В корзину · {rub((price ?? 0) * (b2b ? p.box_qty : 1))}</button>
+        </>
+      )
+    ) : (
+      <button class="pl-btn pl-btn--primary grow is-disabled" type="button" disabled>Нет в наличии</button>
+    )}
+  </div>
+</Shop>
+
+<script>
+  import { rubJs } from '../../scripts/fmt';
+  // Галерея
+  document.querySelectorAll<HTMLElement>('[data-gallery]').forEach((g) => {
+    const main = g.querySelector<HTMLImageElement>('[data-main]')!;
+    const srcs: string[] = JSON.parse(main.dataset.srcs || '[]');
+    let i = 0;
+    const show = (n: number) => {
+      i = (n + srcs.length) % srcs.length;
+      main.src = srcs[i];
+      g.querySelectorAll('[data-thumb]').forEach((t, k) => t.classList.toggle('on', k === i));
+    };
+    g.addEventListener('click', (e) => {
+      const t = (e.target as HTMLElement).closest<HTMLElement>('[data-thumb]');
+      if (t) show(Number(t.dataset.thumb));
+      const s = (e.target as HTMLElement).closest<HTMLElement>('[data-step]');
+      if (s) show(i + Number(s.dataset.step));
+    });
+  });
+  // Свайп-галерея на мобайле: точки
+  document.querySelectorAll<HTMLElement>('[data-swipe]').forEach((w) => {
+    const track = w.querySelector<HTMLElement>('[data-track]')!;
+    const dots = w.querySelectorAll<HTMLElement>('[data-dots] > span');
+    track.addEventListener('scroll', () => {
+      const n = Math.round(track.scrollLeft / track.clientWidth);
+      dots.forEach((d, k) => {
+        d.style.width = k === n ? '20px' : '6px';
+        d.style.background = k === n ? 'var(--accent)' : 'var(--line-strong)';
+      });
+    }, { passive: true });
+  });
+  // Вкладки
+  document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((box) => {
+    box.addEventListener('click', (e) => {
+      const t = (e.target as HTMLElement).closest<HTMLElement>('[data-tab]');
+      if (!t) return;
+      box.querySelectorAll('[data-tab]').forEach((b) => {
+        b.classList.toggle('on', b === t);
+        b.setAttribute('aria-selected', String(b === t));
+      });
+      box.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== t.dataset.tab));
+    });
+  });
+  // Счётчик количества
+  document.querySelectorAll<HTMLElement>('[data-stepper]').forEach((s) => {
+    const input = s.querySelector('input')!;
+    const step = Number(s.dataset.stepSize || 1);
+    const max = Number(s.dataset.max || 999);
+    const dec = s.querySelector<HTMLButtonElement>('[data-dec]')!;
+    const inc = s.querySelector<HTMLButtonElement>('[data-inc]')!;
+    const label = document.querySelector<HTMLElement>('[data-total-label]');
+    const set = (v: number) => {
+      v = Math.max(step, Math.min(Math.floor(max / step) * step || step, Math.round(v / step) * step || step));
+      input.value = String(v);
+      dec.disabled = v <= step;
+      inc.disabled = v + step > max;
+      if (label && s.dataset.price) label.textContent = `В корзину · ${rubJs(Number(s.dataset.price) * v)}`;
+    };
+    dec.addEventListener('click', () => set(Number(input.value) - step));
+    inc.addEventListener('click', () => set(Number(input.value) + step));
+    input.addEventListener('change', () => set(Number(input.value)));
+  });
+</script>

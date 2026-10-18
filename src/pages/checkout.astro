@@ -1,0 +1,191 @@
+---
+import Shop from '../layouts/Shop.astro';
+import DeliveryPicker from '../components/DeliveryPicker.astro';
+import PayModal from '../components/PayModal.astro';
+import { getCart } from '../lib/cart';
+import { db } from '../lib/db';
+import { rub, phoneInput, phoneMasked } from '../lib/format';
+import { imageUrl } from '../lib/images';
+import { cartMode } from '../lib/session';
+import { OZON_MIN_PRICE } from '../lib/delivery';
+
+if (cartMode(Astro.locals) === 'b2b') return Astro.redirect('/b2b/checkout');
+const cart = getCart(Astro.locals);
+if (!cart.count) return Astro.redirect('/cart');
+
+const { user } = Astro.locals;
+// Подставляем данные из профиля и последнего заказа
+const last = user
+  ? db.get<any>(`select * from orders where user_id = ? order by id desc limit 1`, user.id)
+  : Astro.locals.sid ? db.get<any>(`select * from orders where session_id = ? order by id desc limit 1`, Astro.locals.sid) : undefined;
+const name = user?.name || last?.name || '';
+const email = user?.email || last?.email || '';
+const phone = user?.phone || last?.phone || '';
+const dType = (last?.delivery_type as 'ozon' | 'wb') || 'ozon';
+const city = last?.city || 'Ростов-на-Дону';
+const pvzId = last?.delivery_type === 'ozon' ? last?.pvz_id : '';
+const wbAddress = last?.delivery_type === 'wb' ? last?.pvz_address : '';
+const newsletter = Boolean(user?.newsletter);
+const accepted = Boolean(user?.offer_accepted_at && user?.pd_consent_at);
+const thumbs = cart.lines.filter((l) => l.available).slice(0, 4);
+---
+<Shop title="Оформление заказа" header="checkout" step={2} noindex showTab={false} footer={false} cookie={false} pageClass="has-sticky-only" mobileHeader={{ kind: 'title', title: 'Оформление заказа', back: '/cart', backLabel: 'Назад в корзину', extra: 'шаг 2 из 3' }} fabsClass="low" mobileWaOnly>
+  <main class="wrap checkout-main" style="padding-top: 40px; padding-bottom: 120px;">
+    <a class="pl-btn pl-btn--text d-only" href="/cart" style="padding-left: 0; margin-bottom: 8px;"><i class="ic ic-chev-l ic-20"></i>Вернуться в корзину</a>
+    <h1 class="t-h2 d-only" style="margin-bottom: 40px;">Оформление заказа</h1>
+    <form class="two-col" data-checkout novalidate data-items={cart.itemsTotal} data-discount={cart.discount} data-count={cart.count}>
+      <div class="col g32 checkout-blocks">
+        <section class="box" style="padding: 32px;">
+          <div class="blk-h"><span class="blk-n">1</span><h2 class="t-h3 grow">Контакты</h2>{user && <span class="sm muted d-only">Вы вошли как {phoneMasked(user.phone)}</span>}</div>
+          <div class="grid-form">
+            <div class="pl-field span-2"><label class="pl-field__label" for="f-name">ФИО</label><input class="pl-input" id="f-name" name="name" value={name} placeholder="Фамилия Имя Отчество" autocomplete="name" required /><span class="pl-field__error" hidden data-err="name"><i class="ic ic-alert ic-16"></i>Укажите фамилию и имя получателя</span></div>
+            <div class="pl-field"><label class="pl-field__label" for="f-email">Email</label><input class="pl-input" id="f-email" name="email" type="email" inputmode="email" value={email} placeholder="name@mail.ru" autocomplete="email" required /><span class="pl-field__hint">Пришлём чек и статус заказа</span><span class="pl-field__error" hidden data-err="email"><i class="ic ic-alert ic-16"></i>Проверьте адрес почты</span></div>
+            <div class="pl-field"><label class="pl-field__label" for="f-phone">Телефон</label><input class="pl-input" id="f-phone" name="phone" type="tel" inputmode="tel" value={phone ? phoneInput(phone) : ''} placeholder="+7 (___) ___-__-__" autocomplete="tel" data-phone required />{user?.phone ? <span class="pl-field__hint">Подставлено из профиля</span> : <span class="pl-field__hint">Для связи по заказу</span>}<span class="pl-field__error" hidden data-err="phone"><i class="ic ic-alert ic-16"></i>Проверьте номер телефона</span></div>
+            {!user && <p class="xs muted span-2">Уже покупали? <a class="link" href="/login?next=/checkout">Войдите</a> — данные подставятся.</p>}
+          </div>
+        </section>
+
+        <section class="box" style="padding: 32px;">
+          <div class="blk-h"><span class="blk-n">2</span><h2 class="t-h3">Доставка</h2></div>
+          <DeliveryPicker type={dType} city={city} pvzId={pvzId} wbAddress={wbAddress} />
+        </section>
+
+        <section class="box" style="padding: 32px;">
+          <div class="blk-h"><span class="blk-n">3</span><h2 class="t-h3">Согласия</h2></div>
+          <div class="col g16">
+            <div class="col g4">
+              <label class={`pl-check ${accepted ? 'is-checked' : ''}`}><input type="checkbox" name="offer" checked={accepted} /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Принимаю условия <a href="/legal/offer" target="_blank">оферты</a> <span class="pl-check__req">— обязательно</span></span></label>
+              <span class="pl-field__error" style="padding-left: 32px;" hidden data-err="offer"><i class="ic ic-alert ic-16"></i>Нужно принять условия, чтобы оформить заказ</span>
+            </div>
+            <div class="col g4">
+              <label class={`pl-check ${accepted ? 'is-checked' : ''}`}><input type="checkbox" name="pd" checked={accepted} /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Даю согласие на <a href="/legal/consent" target="_blank">обработку персональных данных</a> <span class="pl-check__req">— обязательно</span></span></label>
+              <span class="pl-field__error" style="padding-left: 32px;" hidden data-err="pd"><i class="ic ic-alert ic-16"></i>Без согласия мы не сможем доставить заказ</span>
+            </div>
+            <label class={`pl-check ${newsletter ? 'is-checked' : ''}`}><input type="checkbox" name="newsletter" checked={newsletter} /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Хочу получать новости и акции компании</span></label>
+          </div>
+        </section>
+
+        <section class="box col g12 m-only" style="padding: 20px;">
+          <h2 class="t-h3">Итого</h2>
+          <div class="sum-row"><span class="muted">Товары, {cart.count} шт.</span><span>{rub(cart.itemsTotal)}</span></div>
+          <div class="sum-row"><span class="muted" data-dlabel-m>Доставка</span><span data-dcost>—</span></div>
+          {cart.discount > 0 && <div class="sum-row"><span class="muted">Промокод {cart.promoCode}</span><span class="save">{rub(-cart.discount)}</span></div>}
+          <div class="hr"></div>
+          <div class="sum-total"><span class="t-h4">К оплате</span><b data-total>{rub(cart.total)}</b></div>
+        </section>
+      </div>
+
+      <aside class="box col sticky-side d-only" style="padding: 28px; gap: 20px;">
+        <h2 class="t-h3">Ваш заказ</h2>
+        <div class="row between"><div class="mini-imgs">{thumbs.map((l) => <span><img src={imageUrl(l.product.images[0])} alt="" width="56" height="56" /></span>)}</div><a class="sm link" href="/cart">Изменить</a></div>
+        {cart.discount > 0 && <div class="pl-promo-applied" style="font-size: 14px;"><span class="row g8"><i class="ic ic-check ic-18"></i><b>{cart.promoCode}</b> — {cart.promoLabel}</span></div>}
+        {cart.promoError && <div class="pl-note pl-note--error"><i class="ic ic-alert"></i><span>Промокод {cart.promoCode} не применён: {cart.promoError.toLowerCase()}.</span></div>}
+        <div class="col g12">
+          <div class="sum-row"><span class="muted">Товары, {cart.count} шт.</span><span>{rub(cart.itemsTotal)}</span></div>
+          <div class="sum-row"><span class="muted" data-dlabel>Доставка · ПВЗ Ozon</span><span data-dcost>от {rub(OZON_MIN_PRICE)}</span></div>
+          {cart.discount > 0 && <div class="sum-row"><span class="muted">Скидка по промокоду</span><span class="save">{rub(-cart.discount)}</span></div>}
+        </div>
+        <div class="hr"></div>
+        <div class="sum-total"><span class="t-h4">К оплате</span><b data-total>{rub(cart.total)}</b></div>
+        <button class="pl-btn pl-btn--primary pl-btn--block" type="submit" data-submit>Оплатить {rub(cart.total)}</button>
+        <div class="row g8 xs muted" style="justify-content: center;"><i class="ic ic-card ic-18"></i>Банковская карта <span>·</span><i class="ic ic-sbp ic-18"></i>СБП</div>
+        <p class="xs muted" style="text-align: center;" data-consent-hint>Кнопка станет активной, когда отмечены обязательные согласия.</p>
+        <span class="pl-field__error" hidden data-err="form"><i class="ic ic-alert ic-16"></i><span></span></span>
+      </aside>
+
+      <div class="m-sticky bottom m-only">
+        <div class="col" style="line-height: 1.2;"><span class="xs muted">К оплате</span><b style="font-size: 20px; font-weight: 600; color: var(--ink-strong);" data-total>{rub(cart.total)}</b></div>
+        <button class="pl-btn pl-btn--primary grow" type="submit" data-submit-m>Оплатить</button>
+      </div>
+    </form>
+  </main>
+  <PayModal slot="after" />
+</Shop>
+
+<style is:global>
+  @media (max-width: 767px) {
+    .checkout-main { padding-top: 16px !important; }
+    .page:has(.checkout-main) { background: var(--surface-alt); }
+    .checkout-blocks { gap: 12px !important; }
+    .checkout-blocks > .box { padding: 20px !important; }
+    .checkout-blocks .blk-h { margin-bottom: 16px; }
+  }
+</style>
+
+<script>
+  import { api, toast } from '../scripts/app';
+  import { rubJs } from '../scripts/fmt';
+
+  const form = document.querySelector<HTMLFormElement>('[data-checkout]')!;
+  const items = Number(form.dataset.items);
+  const discount = Number(form.dataset.discount);
+  const submitD = form.querySelector<HTMLButtonElement>('[data-submit]')!;
+  const submitM = form.querySelector<HTMLButtonElement>('[data-submit-m]')!;
+  let delivery: any = null;
+
+  const consentsOk = () => (form.elements.namedItem('offer') as HTMLInputElement).checked && (form.elements.namedItem('pd') as HTMLInputElement).checked;
+  const setTotals = () => {
+    const cost = delivery?.cost ?? null;
+    const total = items - discount + (cost ?? 0);
+    form.querySelectorAll('[data-dcost]').forEach((el) => (el.textContent = cost === null ? 'выберите ПВЗ' : rubJs(cost)));
+    form.querySelectorAll('[data-dlabel]').forEach((el) => (el.textContent = `Доставка · ${delivery?.type === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}`));
+    form.querySelectorAll('[data-dlabel-m]').forEach((el) => (el.textContent = `Доставка · ${delivery?.type === 'wb' ? 'ПВЗ WB' : 'ПВЗ Ozon'}`));
+    form.querySelectorAll('[data-total]').forEach((el) => (el.textContent = rubJs(total)));
+    submitD.textContent = `Оплатить ${rubJs(total)}`;
+    const ok = consentsOk();
+    submitD.classList.toggle('is-disabled', !ok);
+    submitD.setAttribute('aria-disabled', String(!ok));
+    form.querySelector<HTMLElement>('[data-consent-hint]')!.hidden = ok;
+  };
+  form.addEventListener('delivery-change', (e: any) => {
+    delivery = e.detail;
+    setTotals();
+  });
+  // Если скрипт выбора ПВЗ уже отработал раньше нас — забираем его состояние сами
+  const picker = form.querySelector<any>('[data-delivery]');
+  if (picker?.deliveryState) delivery = picker.deliveryState();
+  form.addEventListener('change', setTotals);
+
+  const showErr = (key: string, on: boolean) => {
+    const el = form.querySelector<HTMLElement>(`[data-err="${key}"]`);
+    if (el) el.hidden = !on;
+    const input = form.querySelector<HTMLInputElement>(`[name="${key}"]`);
+    if (input?.classList.contains('pl-input')) input.classList.toggle('is-error', on);
+    if (input?.type === 'checkbox') input.closest('.pl-check')!.classList.toggle('is-error', on);
+  };
+  ['name', 'email', 'phone'].forEach((k) => form.querySelector(`[name="${k}"]`)!.addEventListener('input', () => showErr(k, false)));
+
+  const validate = () => {
+    const v = (k: string) => (form.elements.namedItem(k) as HTMLInputElement).value.trim();
+    const errs: string[] = [];
+    if (v('name').split(/\s+/).filter(Boolean).length < 2) errs.push('name');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v('email'))) errs.push('email');
+    if (v('phone').replace(/\D/g, '').length !== 11) errs.push('phone');
+    if (!delivery?.valid) errs.push(delivery?.type === 'wb' ? 'wb' : 'pvz');
+    if (!(form.elements.namedItem('offer') as HTMLInputElement).checked) errs.push('offer');
+    if (!(form.elements.namedItem('pd') as HTMLInputElement).checked) errs.push('pd');
+    ['name', 'email', 'phone', 'wb', 'pvz', 'offer', 'pd'].forEach((k) => showErr(k, errs.includes(k)));
+    if (errs.length) {
+      const first = form.querySelector<HTMLElement>(`[data-err="${errs[0]}"]`);
+      first?.closest('section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    return errs.length === 0;
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    const btns = [submitD, submitM];
+    btns.forEach((b) => b.classList.add('is-loading'));
+    const fd = new FormData(form);
+    const r = await api('/api/checkout', Object.fromEntries(fd.entries()));
+    btns.forEach((b) => b.classList.remove('is-loading'));
+    if (!r.ok) {
+      if (r.field) showErr(r.field, true);
+      toast(r.error || 'Не удалось оформить заказ', 'error');
+      return;
+    }
+    (window as any).palada.openPay({ orderId: r.orderId, total: r.total, count: r.count });
+  });
+  setTotals();
+</script>

@@ -1,0 +1,128 @@
+---
+import Shop from '../layouts/Shop.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { categories, listProducts, categoryCounts, SORTS, type SortKey } from '../lib/catalog';
+import { cartQtyMap } from '../lib/cart';
+import { favIds } from '../lib/favorites';
+import { goods } from '../lib/format';
+import { cartMode } from '../lib/session';
+
+if (cartMode(Astro.locals) === 'b2b') return Astro.redirect('/b2b/catalog' + Astro.url.search);
+
+const PAGE = 8;
+const sp = Astro.url.searchParams;
+const q = (sp.get('q') || '').trim().slice(0, 80);
+const cat = sp.get('cat') || '';
+const sort = (Object.keys(SORTS).includes(sp.get('sort') || '') ? sp.get('sort') : 'popular') as SortKey;
+const page = Math.max(1, parseInt(sp.get('page') || '1', 10) || 1);
+const cats = categories();
+const counts = categoryCounts(q);
+const { items, total } = listProducts({ category: cat || undefined, q: q || undefined, sort, limit: PAGE * page });
+const inCart = cartQtyMap(Astro.locals);
+const favs = favIds(Astro.locals);
+
+const link = (patch: Record<string, string | null>) => {
+  const u = new URLSearchParams(sp);
+  for (const [k, v] of Object.entries(patch)) v ? u.set(k, v) : u.delete(k);
+  u.delete('page');
+  if (patch.page) u.set('page', patch.page);
+  const s = u.toString();
+  return '/catalog' + (s ? `?${s}` : '');
+};
+const activeName = cats.find((c) => c.slug === cat)?.name;
+---
+<Shop title={activeName ? `${activeName} — каталог` : 'Каталог'} nav="catalog" tab="catalog">
+  <main class="wrap" style="padding-bottom: 96px;" data-swap="catalog">
+    <nav class="crumbs"><a href="/">Главная</a><i class="ic ic-chev-r"></i>{activeName ? <><a href="/catalog">Каталог</a><i class="ic ic-chev-r"></i><span>{activeName}</span></> : <span>Каталог</span>}</nav>
+
+    <div class="row between d-only" style="align-items: flex-end; margin-bottom: 32px;">
+      <div class="row g16" style="align-items: baseline;"><h1 class="t-h2">Каталог</h1><span class="muted">{goods(counts.all || 0)}</span></div>
+      <form action="/catalog" method="get" role="search" style="position: relative; width: 340px;">
+        {cat && <input type="hidden" name="cat" value={cat} />}
+        {sort !== 'popular' && <input type="hidden" name="sort" value={sort} />}
+        <i class="ic ic-search ic-20 muted" style="position: absolute; left: 14px; top: 14px;"></i>
+        <input class="pl-input" style="padding-left: 44px; padding-right: 40px;" name="q" value={q} placeholder="Найти средство" aria-label="Поиск по каталогу" autocomplete="off" />
+        {q && <a href={link({ q: null })} aria-label="Очистить поиск" style="position: absolute; right: 14px; top: 15px;" class="muted"><i class="ic ic-close ic-18"></i></a>}
+      </form>
+    </div>
+
+    <div class="m-only col g16" style="padding-top: 20px; padding-bottom: 16px;">
+      <div class="row g12" style="align-items: baseline;"><h1 class="m-h2">Каталог</h1><span class="sm muted">{goods(counts.all || 0)}</span></div>
+      <form action="/catalog" method="get" role="search" style="position: relative;">
+        {cat && <input type="hidden" name="cat" value={cat} />}
+        <i class="ic ic-search ic-20 muted" style="position: absolute; left: 14px; top: 14px;"></i>
+        <input class="pl-input" style="padding-left: 44px;" name="q" value={q} placeholder="Найти средство" aria-label="Поиск по каталогу" autocomplete="off" />
+      </form>
+    </div>
+
+    <div class="row between g24 d-only" style="margin-bottom: 32px; flex-wrap: wrap;">
+      <div class="chips">
+        <a class={`chip ${!cat ? 'on' : ''}`} href={link({ cat: null })}>Все <span class="n">{counts.all || 0}</span></a>
+        {cats.map((c) => <a class={`chip ${cat === c.slug ? 'on' : ''}`} href={link({ cat: c.slug })}>{c.name} <span class="n">{counts[c.slug] || 0}</span></a>)}
+      </div>
+      <div class="row g8"><span class="sm muted">Сортировка</span>
+        <label class="select"><span>{SORTS[sort]}</span><i class="ic ic-chev-d ic-18"></i>
+          <select name="sort" data-nav aria-label="Сортировка">{Object.entries(SORTS).map(([k, v]) => <option value={k} selected={k === sort}>{v}</option>)}</select>
+        </label>
+      </div>
+    </div>
+
+    <div class="m-only">
+      <div class="m-scroll" style="padding: 0 16px 12px; margin: 0 -16px;">
+        <a class={`chip ${!cat ? 'on' : ''}`} href={link({ cat: null })}>Все</a>
+        {cats.map((c) => <a class={`chip ${cat === c.slug ? 'on' : ''}`} href={link({ cat: c.slug })}>{c.name}</a>)}
+      </div>
+      <div class="row between" style="padding-bottom: 16px;">
+        <label class="select" style="border: 0; padding-left: 0;"><i class="ic ic-sort ic-18"></i><span>{SORTS[sort]}</span>
+          <select name="sort" data-nav aria-label="Сортировка">{Object.entries(SORTS).map(([k, v]) => <option value={k} selected={k === sort}>{v}</option>)}</select>
+        </label>
+        <label class="select"><i class="ic ic-filter ic-18"></i>Фильтр
+          <select name="cat" data-nav aria-label="Категория"><option value="">Все категории</option>{cats.map((c) => <option value={c.slug} selected={cat === c.slug}>{c.name}</option>)}</select>
+        </label>
+      </div>
+    </div>
+
+    {items.length ? (
+      <>
+        <div class="grid4">
+          {items.map((p) => <ProductCard p={p} inCart={inCart.has(p.id)} fav={favs.has(p.id)} short />)}
+        </div>
+        {items.length < total ? (
+          <div class="col g12" style="align-items: center; margin-top: 48px;">
+            <a class="pl-btn pl-btn--secondary" href={link({ page: String(page + 1) })} style="padding: 0 40px;" data-more>Показать ещё</a>
+            <span class="sm muted">Показано {items.length} из {total}</span>
+          </div>
+        ) : total > PAGE && (
+          <div class="col g12" style="align-items: center; margin-top: 48px;"><span class="sm muted">Показаны все {total}</span></div>
+        )}
+      </>
+    ) : (
+      <section class="box col g16 empty-box" style="margin: 16px auto 0; max-width: 720px;">
+        <span class="state-ic state-empty"><i class="ic ic-search ic-40"></i></span>
+        <h2 class="t-h3" style="font-size: 26px;">Ничего не найдено</h2>
+        <p class="muted" style="max-width: 400px;">{q ? <>По запросу «{q}» товаров нет. Проверьте написание или посмотрите категории.</> : 'В этой категории пока нет товаров. Посмотрите другие категории.'}</p>
+        <div class="chips" style="justify-content: center;">{cats.slice(0, 3).map((c) => <a class="chip" href={`/catalog?cat=${c.slug}`}>{c.name}</a>)}</div>
+      </section>
+    )}
+  </main>
+</Shop>
+
+<script>
+  // «Показать ещё» без перезагрузки: подменяем сетку свежим HTML
+  document.addEventListener('click', async (e) => {
+    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('[data-more]');
+    if (!a) return;
+    e.preventDefault();
+    a.classList.add('is-loading');
+    const html = await fetch(a.href, { headers: { 'x-swap': '1' } }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const fresh = doc.querySelector('[data-swap="catalog"]');
+    const cur = document.querySelector('[data-swap="catalog"]');
+    if (fresh && cur) {
+      const y = scrollY;
+      cur.replaceWith(fresh);
+      history.replaceState(null, '', a.href);
+      scrollTo(0, y);
+    }
+  });
+</script>

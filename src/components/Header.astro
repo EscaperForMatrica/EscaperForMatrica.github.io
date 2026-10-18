@@ -1,0 +1,67 @@
+---
+import { shop } from '../lib/config';
+import { cartMode } from '../lib/session';
+
+export type HeaderKind = 'full' | 'compact' | 'checkout' | 'phone-only';
+
+interface Props {
+  kind?: HeaderKind;
+  nav?: 'catalog' | 'b2b' | null;
+  user?: 'favs' | 'cart' | 'account' | null;
+  surface?: boolean;
+  cartCount: number;
+  step?: 2 | 3;
+}
+
+const { kind = 'full', nav = null, user: activeTool = null, surface = false, cartCount, step = 2 } = Astro.props;
+const { user, company } = Astro.locals;
+const b2b = cartMode(Astro.locals) === 'b2b';
+const catalogHref = b2b ? '/b2b/catalog' : '/catalog';
+const cartHref = b2b ? '/b2b/checkout' : '/cart';
+const cartLabel = cartCount ? (b2b ? `Корзина, позиций: ${cartCount}` : `Корзина, товаров: ${cartCount}`) : 'Корзина';
+const accountHref = user ? '/account' : '/login';
+---
+<header class="hdr" style={surface ? 'background: var(--surface);' : undefined}>
+  <div class="wrap">
+    <a class="logo" href="/"><img src="/images/logo.png" alt="" width="24" height="21" />PALADA</a>
+    {kind === 'checkout' ? (
+      <div class="stepper" style="margin-left: 24px;">
+        <span class="s done"><span class="dot"><i class="ic ic-check ic-16"></i></span>Корзина</span><span class="bar"></span>
+        <span class={`s ${step === 2 ? 'cur' : 'done'}`}><span class="dot">{step === 2 ? '2' : <i class="ic ic-check ic-16"></i>}</span>Оформление</span><span class="bar"></span>
+        <span class={`s ${step === 3 ? 'cur' : ''}`}><span class="dot">3</span>Оплата</span>
+      </div>
+    ) : kind !== 'phone-only' && (
+      <nav class="nav" aria-label="Основное меню">
+        <a class={nav === 'catalog' ? 'on' : undefined} href={catalogHref}>Каталог</a>
+        <a class={nav === 'b2b' ? 'on' : undefined} href="/b2b">Оптом</a>
+        <a href="/about">О нас</a>
+        <a href="/blog">Блог</a>
+      </nav>
+    )}
+    <div class="hdr-tools">
+      {kind === 'checkout' ? (
+        b2b
+          ? <a class="hdr-phone" href={`tel:${shop.wholesaleTel}`}><b>{shop.wholesalePhone}</b><span>Ваш менеджер</span></a>
+          : <a class="hdr-phone" href={`tel:${shop.supportTel}`}><b>{shop.supportPhone}</b><span>Поможем с заказом</span></a>
+      ) : (
+        <>
+          {(kind === 'full' || kind === 'phone-only') && (
+            <a class="hdr-phone" href={`tel:${shop.wholesaleTel}`}><b>{shop.wholesalePhone}</b><span>{b2b ? 'Ваш менеджер' : 'Оптовые заказы'}</span></a>
+          )}
+          {kind !== 'phone-only' && (b2b && company ? (
+            <>
+              <a class="hbtn" href={cartHref} aria-label={cartLabel}><i class="ic ic-cart"></i><span class="count" data-cart-count hidden={!cartCount}>{cartCount}</span></a>
+              <a class="row g8" href="/b2b/account" style="height: 44px; padding: 0 12px; border-radius: 8px; background: var(--surface);"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><span class="col" style="line-height: 1.15;"><b style="font-weight: 600; font-size: 14px;">{company.name}</b><span class="xs muted">оптовый кабинет</span></span></a>
+            </>
+          ) : (
+            <>
+              <a class={`hbtn ${activeTool === 'favs' ? 'on' : ''}`} href="/favorites" aria-label="Избранное"><i class="ic ic-heart"></i></a>
+              <a class={`hbtn ${activeTool === 'cart' ? 'on' : ''}`} href={cartHref} aria-label={cartLabel}><i class="ic ic-cart"></i><span class="count" data-cart-count hidden={!cartCount}>{cartCount}</span></a>
+              <a class={`hbtn ${activeTool === 'account' ? 'on' : ''}`} href={accountHref} aria-label="Личный кабинет"><i class="ic ic-user"></i></a>
+            </>
+          ))}
+        </>
+      )}
+    </div>
+  </div>
+</header>

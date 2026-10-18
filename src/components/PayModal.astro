@@ -1,0 +1,63 @@
+---
+// Выбор способа оплаты: на десктопе — модальное окно, на мобайле — шторка (оба из макетов).
+interface Props {
+  defaultMethod?: 'card' | 'sbp';
+}
+const { defaultMethod = 'card' } = Astro.props;
+---
+<div class="modal" data-pay-modal role="dialog" aria-modal="true" aria-labelledby="pay-title">
+  <div class="scrim" data-modal-close></div>
+  <div class="modal-box">
+    <div class="row between"><h2 class="t-h3" id="pay-title" style="font-size: 24px;">Способ оплаты</h2><button class="pl-icon-btn" type="button" aria-label="Закрыть" data-modal-close><i class="ic ic-close"></i></button></div>
+    <div class="row between" style="background: var(--surface-alt); border-radius: 8px; padding: 16px 20px;"><span class="muted"><span class="d-only" data-pay-count>Заказ</span><span class="m-only sm">К оплате</span></span><b class="pl-price" data-pay-total></b></div>
+    <div class="col g12" role="radiogroup" aria-label="Способ оплаты">
+      <label class={`pl-option ${defaultMethod === 'card' ? 'is-selected' : ''}`} style="align-items: center; padding: 20px;">
+        <input type="radio" name="pay_method" value="card" checked={defaultMethod === 'card'} />
+        <span class="pl-radio" style="margin: 0;"></span><span class="adv-ic" style="width: 44px; height: 44px; margin: 0;"><i class="ic ic-card"></i></span>
+        <span class="col grow"><b style="font-weight: 600;">Банковская карта</b><span class="sm muted">Visa, Mastercard, МИР</span></span>
+      </label>
+      <label class={`pl-option ${defaultMethod === 'sbp' ? 'is-selected' : ''}`} style="align-items: center; padding: 20px;">
+        <input type="radio" name="pay_method" value="sbp" checked={defaultMethod === 'sbp'} />
+        <span class="pl-radio" style="margin: 0;"></span><span class="adv-ic" style="width: 44px; height: 44px; margin: 0;"><i class="ic ic-sbp"></i></span>
+        <span class="col grow"><b style="font-weight: 600;">СБП</b><span class="sm muted"><span class="d-only">Оплата по QR-коду в приложении банка</span><span class="m-only">Откроется приложение вашего банка</span></span></span>
+      </label>
+    </div>
+    <span class="pl-field__error" hidden data-pay-error><i class="ic ic-alert ic-16"></i><span></span></span>
+    <button class="pl-btn pl-btn--primary pl-btn--block" type="button" data-pay-go><span class="d-only">Перейти к оплате</span><span class="m-only" data-pay-go-m>Оплатить</span></button>
+    <p class="xs muted" style="text-align: center;"><span class="d-only">Вы перейдёте на защищённую страницу платёжного сервиса. Данные карты не хранятся на сайте PALADA.</span><span class="m-only">Защищённая оплата. Данные карты не хранятся на сайте.</span></p>
+  </div>
+</div>
+
+<script>
+  import { api, openModal } from '../scripts/app';
+  import { rubJs } from '../scripts/fmt';
+
+  const modal = document.querySelector<HTMLElement>('[data-pay-modal]');
+  if (modal) {
+    const go = modal.querySelector<HTMLButtonElement>('[data-pay-go]')!;
+    const err = modal.querySelector<HTMLElement>('[data-pay-error]')!;
+    // Страница вызывает window.palada.openPay({ orderId, total, count })
+    (window as any).palada = Object.assign((window as any).palada || {}, {
+      openPay(o: { orderId: number; total: number; count: number }) {
+        modal.dataset.order = String(o.orderId);
+        modal.querySelector('[data-pay-total]')!.textContent = rubJs(o.total);
+        modal.querySelector('[data-pay-count]')!.textContent = `Заказ на ${o.count} ${o.count % 10 === 1 && o.count % 100 !== 11 ? 'товар' : [2, 3, 4].includes(o.count % 10) && ![12, 13, 14].includes(o.count % 100) ? 'товара' : 'товаров'}`;
+        modal.querySelector('[data-pay-go-m]')!.textContent = `Оплатить ${rubJs(o.total)}`;
+        err.hidden = true;
+        openModal(modal);
+      },
+    });
+    go.addEventListener('click', async () => {
+      const method = modal.querySelector<HTMLInputElement>('input[name="pay_method"]:checked')?.value || 'card';
+      go.classList.add('is-loading');
+      const r = await api('/api/pay', { orderId: Number(modal.dataset.order), method });
+      if (r.ok && r.redirect) {
+        location.href = r.redirect;
+        return;
+      }
+      go.classList.remove('is-loading');
+      err.hidden = false;
+      err.querySelector('span')!.textContent = r.error || 'Не удалось перейти к оплате';
+    });
+  }
+</script>

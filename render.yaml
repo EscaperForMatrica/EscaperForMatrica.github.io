@@ -1,0 +1,18 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Публичное демо магазина. Для боевого сайта: уберите DEMO_MODE, задайте ключи ЮKassa, sms.ru, DaData,
+# ADMIN_PHONES и подключите постоянный диск для data/ (на бесплатном тарифе база сбрасывается при перезапуске).
+services:
+  - type: web
+    name: palada-shop
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci && npm run fonts && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DEMO_MODE
+        value: "true"

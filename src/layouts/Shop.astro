@@ -1,0 +1,157 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import '../styles/tokens.css';
+import '../styles/components.css';
+import '../styles/icons.css';
+import '../styles/screens.css';
+import '../styles/site.css';
+import Header, { type HeaderKind } from '../components/Header.astro';
+import MobileHeader, { type MobileHeaderSpec } from '../components/MobileHeader.astro';
+import Footer from '../components/Footer.astro';
+import { shop, config } from '../lib/config';
+import { cartCount } from '../lib/cart';
+import { cartMode } from '../lib/session';
+
+interface Props {
+  title: string;
+  description?: string;
+  header?: HeaderKind;
+  headerSurface?: boolean;
+  nav?: 'catalog' | 'b2b' | null;
+  tool?: 'favs' | 'cart' | 'account' | null;
+  step?: 2 | 3;
+  mobileHeader?: MobileHeaderSpec;
+  tab?: 'catalog' | 'cart' | 'fav' | 'account' | null;
+  showTab?: boolean;
+  footer?: boolean;
+  mobileFooter?: boolean;
+  fabs?: boolean;
+  fabsClass?: string;
+  mobileWaOnly?: boolean;
+  cookie?: boolean;
+  pageClass?: string;
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = 'Концентрированная бытовая химия PALADA напрямую с завода: гели для стирки, средства для уборки и кухни. Доставка в ПВЗ Ozon и Wildberries, оплата картой и через СБП.',
+  header = 'full',
+  headerSurface = false,
+  nav = null,
+  tool = null,
+  step = 2,
+  mobileHeader = { kind: 'brand' },
+  tab = null,
+  showTab = true,
+  footer = true,
+  mobileFooter = true,
+  fabs = true,
+  fabsClass = '',
+  mobileWaOnly = false,
+  cookie = true,
+  pageClass = '',
+  noindex = false,
+} = Astro.props;
+
+const count = cartCount(Astro.locals);
+const b2b = cartMode(Astro.locals) === 'b2b';
+const { user } = Astro.locals;
+const cookieOk = Astro.cookies.get('cookie_ok')?.value === '1';
+const showCookie = cookie && !cookieOk;
+const fullTitle = title === 'PALADA' ? 'PALADA — бытовая химия напрямую с завода' : `${title} — PALADA`;
+
+// Tilda Sans подключается, только если шрифт лежит в public/fonts (см. README)
+const fontsDir = path.resolve(process.cwd(), 'public/fonts');
+const hasFont = fs.existsSync(path.join(fontsDir, 'TildaSans-Regular.woff2'));
+const canonical = config.siteUrl ? config.siteUrl + Astro.url.pathname : undefined;
+const pageCls = ['page', pageClass, showTab ? 'has-tab' : '', showCookie ? 'cookie-open' : ''].filter(Boolean).join(' ');
+---
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content="PALADA" />
+    <meta name="theme-color" content="#f7f9fa" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <slot name="head" />
+    {hasFont && (
+      <>
+        <link rel="preload" href="/fonts/TildaSans-Regular.woff2" as="font" type="font/woff2" crossorigin />
+        <link rel="preload" href="/fonts/TildaSans-Semibold.woff2" as="font" type="font/woff2" crossorigin />
+        <style is:inline>
+          @font-face { font-family: "Tilda Sans"; src: url(/fonts/TildaSans-Regular.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+          @font-face { font-family: "Tilda Sans"; src: url(/fonts/TildaSans-Medium.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+          @font-face { font-family: "Tilda Sans"; src: url(/fonts/TildaSans-Semibold.woff2) format("woff2"); font-weight: 600; font-display: swap; }
+          @font-face { font-family: "Tilda Sans"; src: url(/fonts/TildaSans-Bold.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+        </style>
+      </>
+    )}
+  </head>
+  <body>
+    <div class={pageCls}>
+      <a class="skip" href="#main">К содержимому</a>
+      <Header kind={header} nav={nav} user={tool} surface={headerSurface} cartCount={count} step={step} />
+      <MobileHeader spec={mobileHeader} />
+      <slot name="before" />
+      <div id="main" class="grow-main" tabindex="-1">
+        <slot />
+      </div>
+      {footer && <Footer mobile={mobileFooter} />}
+
+      {fabs && (
+        <div class={`fabs pl-fab-stack ${fabsClass}`}>
+          <a class="pl-fab pl-fab--wa" href={shop.whatsapp} target="_blank" rel="noopener" aria-label="Написать в WhatsApp"><i class="ic ic-wa ic-28"></i></a>
+          <a class={`pl-fab pl-fab--call ${mobileWaOnly ? 'd-only' : ''}`} href={`tel:${shop.supportTel}`} aria-label="Позвонить"><i class="ic ic-phone ic-28"></i></a>
+        </div>
+      )}
+      {showCookie && (
+        <div class="cookie-fixed" data-cookie>
+          <div class="pl-cookie">Мы используем файлы cookie, чтобы сайт был удобнее. <a href="/legal/cookies">Подробнее</a><button class="pl-btn pl-btn--primary pl-btn--sm" type="button" data-cookie-ok>OK</button></div>
+        </div>
+      )}
+      <slot name="after" />
+
+      {showTab && (
+        <nav class="m-tab m-only" aria-label="Разделы">
+          <a class={tab === 'catalog' ? 'on' : undefined} href={b2b ? '/b2b/catalog' : '/catalog'}><i class="ic ic-grid"></i>Каталог</a>
+          <a class={tab === 'cart' ? 'on' : undefined} href={b2b ? '/b2b/checkout' : '/cart'}><i class="ic ic-cart"></i>Корзина<span class="count" data-cart-count hidden={!count}>{count}</span></a>
+          <a class={tab === 'fav' ? 'on' : undefined} href="/favorites"><i class="ic ic-heart"></i>Избранное</a>
+          {b2b
+            ? <a class={tab === 'account' ? 'on' : undefined} href="/b2b/account"><i class="ic ic-store"></i>Компания</a>
+            : <a class={tab === 'account' ? 'on' : undefined} href={user ? '/account' : '/login'}><i class="ic ic-user"></i>Кабинет</a>}
+        </nav>
+      )}
+
+      <div class="modal menu-sheet" data-menu role="dialog" aria-modal="true" aria-label="Меню">
+        <div class="scrim" data-menu-close></div>
+        <div class="sheet">
+          <span class="grab"></span>
+          <div class="row between"><a class="logo" href="/"><img src="/images/logo.png" alt="" width="22" height="20" />PALADA</a><button class="pl-icon-btn" type="button" aria-label="Закрыть" data-menu-close><i class="ic ic-close"></i></button></div>
+          <nav class="col">
+            <a class="side-a" href={b2b ? '/b2b/catalog' : '/catalog'}><i class="ic ic-grid ic-20"></i>Каталог</a>
+            <a class="side-a" href="/b2b"><i class="ic ic-store ic-20"></i>Оптом</a>
+            <a class="side-a" href="/about"><i class="ic ic-info ic-20"></i>О нас</a>
+            <a class="side-a" href="/blog"><i class="ic ic-doc ic-20"></i>Блог</a>
+            <a class="side-a" href="/favorites"><i class="ic ic-heart ic-20"></i>Избранное</a>
+            <a class="side-a" href={user ? '/account' : '/login'}><i class="ic ic-user ic-20"></i>{user ? 'Личный кабинет' : 'Войти'}</a>
+            {user?.role === 'admin' && <a class="side-a" href="/admin"><i class="ic ic-edit ic-20"></i>Админка</a>}
+          </nav>
+          <div class="hr"></div>
+          <div class="col g8 sm"><a class="ftr-tel" href={`tel:${shop.wholesaleTel}`}>{shop.wholesalePhone}</a><span class="muted">оптовые заказы</span><a class="ftr-tel" href={`tel:${shop.supportTel}`}>{shop.supportPhone}</a><span class="muted">WhatsApp и звонки</span></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      import '../scripts/app';
+    </script>
+  </body>
+</html>

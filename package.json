@@ -1,0 +1,26 @@
+{
+  "name": "palada-shop",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node ./dist/server/entry.mjs",
+    "db:reset": "node scripts/db-reset.mjs",
+    "fonts": "node scripts/fonts.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.8",
+    "astro": "^7.4.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@types/node": "^26.6.5",
+    "typescript": "^6.0.3"
+  }
+}

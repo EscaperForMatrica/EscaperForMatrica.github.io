@@ -1,0 +1,55 @@
+/* PALADA — generated from tokens.json */
+:root, [data-theme="light"] {
+  --accent: #15aea9;
+  --accent-hover: #13a5a0;
+  --accent-tint: rgba(19,165,160,0.10);
+  --accent-ink: #0e7c78;
+  --surface: #ffffff;
+  --surface-alt: #f7f9fa;
+  --ink: #2d3748;
+  --ink-muted: #64748b;
+  --ink-strong: #1f3a5f;
+  --warm: #ef7d68;
+  --warm-ink: #b4472f;
+  --warm-tint: rgba(239,125,104,0.12);
+  --line: #e8e8e8;
+  --line-strong: #cbd5e1;
+  --error: #c53030;
+  --error-tint: rgba(197,48,48,0.08);
+  --scrim: rgba(15,23,42,0.40);
+  --shadow-card: 0 4px 20px rgba(0,11,48,0.08);
+  --shadow-card-hover: 0 8px 28px rgba(0,11,48,0.12);
+  --shadow-float: 0 6px 20px rgba(0,11,48,0.18);
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --radius-md: 8px;
+  --radius-sm: 4px;
+  --radius-round: 999px;
+  --container: 1200px;
+  --header-h: 66px;
+  --control-h: 48px;
+  --control-h-sm: 40px;
+  --tabbar-h: 64px;
+  --fab: 56px;
+  --font-sans: "Tilda Sans", TildaSans, Arial, sans-serif;
+}
+.h1 { font-family: var(--font-sans); font-size: 52px; line-height: 1.1; font-weight: 600; }
+.h1-mobile { font-family: var(--font-sans); font-size: 32px; line-height: 1.1; font-weight: 600; }
+.h2 { font-family: var(--font-sans); font-size: 42px; line-height: 1.1; font-weight: 600; }
+.h2-mobile { font-family: var(--font-sans); font-size: 28px; line-height: 1.15; font-weight: 600; }
+.h3 { font-family: var(--font-sans); font-size: 20px; line-height: 1.3; font-weight: 600; }
+.body { font-family: var(--font-sans); font-size: 16px; line-height: 1.5; font-weight: 400; }
+.body-strong { font-family: var(--font-sans); font-size: 16px; line-height: 1.5; font-weight: 600; }
+.small { font-family: var(--font-sans); font-size: 14px; line-height: 1.45; font-weight: 400; }
+.label { font-family: var(--font-sans); font-size: 13px; line-height: 1.2; font-weight: 600; }
+.price { font-family: var(--font-sans); font-size: 24px; line-height: 1.2; font-weight: 600; }
+.price-sm { font-family: var(--font-sans); font-size: 20px; line-height: 1.2; font-weight: 600; }

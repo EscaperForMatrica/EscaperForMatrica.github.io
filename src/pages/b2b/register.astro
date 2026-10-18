@@ -1,0 +1,124 @@
+---
+import Shop from '../../layouts/Shop.astro';
+import OtpStep from '../../components/OtpStep.astro';
+import { phoneInput } from '../../lib/format';
+
+if (Astro.locals.company) return Astro.redirect('/b2b/catalog');
+const u = Astro.locals.user;
+---
+<Shop title="Регистрация компании" header="phone-only" nav="b2b" tab="account" noindex footer={false} fabs={false} mobileHeader={{ kind: 'title', title: 'Регистрация', back: '/b2b' }}>
+  <div class="auth b2b-reg" style="padding-top: 56px; align-items: flex-start; gap: 32px; min-height: 1284px;">
+    <div class="auth-card" style="width: 600px;" data-form-card>
+      <div class="seg"><a href="/register">Частное лицо</a><span class="on"><span class="d-only">Компания или ИП</span><span class="m-only">Компания / ИП</span></span></div>
+      <div class="col g8"><h1 class="t-h3" style="font-size: 26px;"><span class="d-only">Регистрация для оптовых покупателей</span><span class="m-only">Оптовым покупателям</span></h1><p class="sm muted">Оптовые цены откроются сразу после регистрации.</p></div>
+      <form class="col g20" data-auth-form data-purpose="b2b-register" novalidate>
+        <span class="t-h4">Компания</span>
+        <div class="pl-field">
+          <label class="pl-field__label" for="b-inn">ИНН организации или ИП</label>
+          <div style="position: relative;"><input class="pl-input" id="b-inn" name="inn" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="10 или 12 цифр" data-req data-inn /><i class="ic ic-check ic-20" style="position: absolute; right: 14px; top: 14px; color: var(--accent-ink);" hidden data-inn-ok></i></div>
+          <span class="pl-field__error" hidden data-err="inn"><i class="ic ic-alert ic-16"></i><span></span></span>
+        </div>
+        <div class="col g8" style="background: var(--accent-tint); border-radius: 8px; padding: 16px 20px;" hidden data-company>
+          <span class="row g8"><i class="ic ic-store ic-20 d-only" style="color: var(--accent-ink);"></i><b style="font-weight: 600;" data-c-name></b><span class="pl-badge pl-badge--accent d-only" style="height: 22px; margin-left: auto;" data-c-status></span></span>
+          <div class="sum-row sm d-only" data-c-kpp-row><span class="muted">КПП</span><span data-c-kpp></span></div>
+          <div class="sum-row sm d-only"><span class="muted">ОГРН</span><span data-c-ogrn></span></div>
+          <div class="sum-row sm d-only"><span class="muted">Юр. адрес</span><span style="text-align: right;" data-c-address></span></div>
+          <span class="xs muted m-only" data-c-line></span>
+          <span class="xs muted m-only" data-c-address-m></span>
+          <button class="xs link" type="button" style="align-self: flex-start;" data-c-reset>Не та компания? Изменить ИНН</button>
+        </div>
+        <span class="t-h4" style="margin-top: 4px;">Контактное лицо</span>
+        <div class="pl-field"><label class="pl-field__label" for="b-name">ФИО</label><input class="pl-input" id="b-name" name="name" value={u?.name || ''} placeholder="Фамилия Имя Отчество" autocomplete="name" data-req /><span class="pl-field__error" hidden data-err="name"><i class="ic ic-alert ic-16"></i><span></span></span></div>
+        <div class="grid2 b2b-pair" style="gap: 20px 16px;">
+          <div class="pl-field d-only"><label class="pl-field__label" for="b-pos">Должность <i>(необязательно)</i></label><input class="pl-input" id="b-pos" name="position" placeholder="Например, закупщик" /></div>
+          <div class="pl-field"><label class="pl-field__label" for="b-email"><span class="d-only">Email</span><span class="m-only">Email для счетов</span></label><input class="pl-input" id="b-email" name="email" type="email" value={u?.email || ''} placeholder="zakupki@company.ru" inputmode="email" autocomplete="email" data-req /><span class="pl-field__hint d-only">Сюда придут счета и документы</span><span class="pl-field__error" hidden data-err="email"><i class="ic ic-alert ic-16"></i><span></span></span></div>
+        </div>
+        <div class="pl-field"><label class="pl-field__label" for="b-phone">Телефон для входа</label><input class="pl-input" id="b-phone" name="phone" value={u ? phoneInput(u.phone) : ''} type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (___) ___-__-__" data-phone data-req /><span class="pl-field__hint"><span class="d-only">Вход — по коду из СМС, как у обычных покупателей</span><span class="m-only">Вход — по коду из СМС</span></span><span class="pl-field__error" hidden data-err="phone"><i class="ic ic-alert ic-16"></i><span></span></span></div>
+        <div class="col g16" style="padding-top: 4px;">
+          <div class="col g4">
+            <label class="pl-check"><input type="checkbox" name="offer" data-req /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Принимаю условия <a href="/legal/offer-b2b" target="_blank">оферты для юридических лиц и ИП</a> <span class="pl-check__req">— обязательно</span></span></label>
+            <span class="pl-field__error" style="padding-left: 32px;" hidden data-err="offer"><i class="ic ic-alert ic-16"></i><span></span></span>
+          </div>
+          <div class="col g4">
+            <label class="pl-check"><input type="checkbox" name="pd" data-req /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Даю согласие на <a href="/legal/consent" target="_blank">обработку персональных данных</a> <span class="pl-check__req">— обязательно</span></span></label>
+            <span class="pl-field__error" style="padding-left: 32px;" hidden data-err="pd"><i class="ic ic-alert ic-16"></i><span></span></span>
+          </div>
+          <label class="pl-check"><input type="checkbox" name="newsletter" /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span><span>Хочу получать новости и оптовые предложения</span></label>
+        </div>
+        <div class="col g12">
+          <button class="pl-btn pl-btn--primary pl-btn--block is-disabled" type="submit"><span class="d-only">Получить код и зарегистрироваться</span><span class="m-only">Получить код</span></button>
+          <p class="xs muted" style="text-align: center;" data-ready-hint>Заполните поля и отметьте обязательные согласия</p>
+        </div>
+      </form>
+      <p class="sm muted" style="text-align: center;">Уже зарегистрированы? <a class="link" href="/login?next=/b2b/catalog">Войти</a></p>
+      <div class="col g12 m-only" style="border-top: 1px solid var(--line); padding-top: 20px;">
+        <div class="row g12"><i class="ic ic-coin ic-20" style="color: var(--accent-ink);"></i><span class="sm">Оптовые цены во всём каталоге</span></div>
+        <div class="row g12"><i class="ic ic-doc ic-20" style="color: var(--accent-ink);"></i><span class="sm">Счёт на компанию и закрывающие документы</span></div>
+        <div class="row g12"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><span class="sm">Доставка в ПВЗ Ozon и Wildberries</span></div>
+      </div>
+    </div>
+    <OtpStep width={600} />
+    <aside class="col g16 d-only" style="width: 320px; padding-top: 8px;" data-hide-on-code>
+      <h2 class="t-h3">Что даёт оптовый кабинет</h2>
+      <div class="row g12" style="align-items: flex-start;"><span class="adv-ic" style="width: 40px; height: 40px; margin: 0; flex: none;"><i class="ic ic-coin ic-20"></i></span><div class="col"><b style="font-weight: 600;">Оптовые цены</b><span class="sm muted">Во всём каталоге, от коробки</span></div></div>
+      <div class="row g12" style="align-items: flex-start;"><span class="adv-ic" style="width: 40px; height: 40px; margin: 0; flex: none;"><i class="ic ic-doc ic-20"></i></span><div class="col"><b style="font-weight: 600;">Счёт на компанию</b><span class="sm muted">Формируется при оформлении заказа</span></div></div>
+      <div class="row g12" style="align-items: flex-start;"><span class="adv-ic" style="width: 40px; height: 40px; margin: 0; flex: none;"><i class="ic ic-box ic-20"></i></span><div class="col"><b style="font-weight: 600;">Документы в кабинете</b><span class="sm muted">Счета и закрывающие документы по каждому заказу</span></div></div>
+      <div class="row g12" style="align-items: flex-start;"><span class="adv-ic" style="width: 40px; height: 40px; margin: 0; flex: none;"><i class="ic ic-store ic-20"></i></span><div class="col"><b style="font-weight: 600;">Доставка в ПВЗ</b><span class="sm muted">Ozon или Wildberries</span></div></div>
+    </aside>
+  </div>
+</Shop>
+<style is:global>
+  @media (max-width: 767px) { .b2b-reg .b2b-pair { grid-template-columns: 1fr; } }
+</style>
+<script>
+  import '../../scripts/auth';
+  const inn = document.querySelector<HTMLInputElement>('[data-inn]')!;
+  const box = document.querySelector<HTMLElement>('[data-company]')!;
+  const ok = document.querySelector<HTMLElement>('[data-inn-ok]')!;
+  const err = document.querySelector<HTMLElement>('[data-err="inn"]')!;
+  const set = (sel: string, v: string) => document.querySelectorAll(sel).forEach((el) => (el.textContent = v));
+  let last = '';
+  const check = async () => {
+    const v = inn.value.replace(/\D/g, '');
+    inn.value = v;
+    if (v === last) return;
+    last = v;
+    box.hidden = true;
+    ok.hidden = true;
+    if (v.length !== 10 && v.length !== 12) return;
+    const r = await fetch(`/api/b2b/inn?inn=${v}`).then((x) => x.json());
+    if (!r.ok) {
+      err.hidden = false;
+      err.querySelector('span')!.textContent = r.error;
+      inn.classList.add('is-error');
+      return;
+    }
+    const c = r.company;
+    set('[data-c-name]', c.name);
+    set('[data-c-status]', c.statusLabel);
+    set('[data-c-kpp]', c.kpp);
+    set('[data-c-ogrn]', c.ogrn);
+    set('[data-c-address]', c.address);
+    set('[data-c-address-m]', c.address);
+    set('[data-c-line]', [c.kpp && `КПП ${c.kpp}`, c.ogrn && `ОГРН ${c.ogrn}`].filter(Boolean).join(' · '));
+    document.querySelector<HTMLElement>('[data-c-kpp-row]')!.hidden = !c.kpp;
+    box.hidden = false;
+    ok.hidden = false;
+    if (!c.active) {
+      err.hidden = false;
+      err.querySelector('span')!.textContent = `Статус компании: ${c.statusLabel.toLowerCase()}. Регистрация недоступна — напишите менеджеру.`;
+    }
+  };
+  inn.addEventListener('input', () => {
+    err.hidden = true;
+    inn.classList.remove('is-error');
+    check();
+  });
+  document.querySelector('[data-c-reset]')!.addEventListener('click', () => {
+    inn.value = '';
+    last = '';
+    box.hidden = true;
+    ok.hidden = true;
+    inn.focus();
+  });
+</script>

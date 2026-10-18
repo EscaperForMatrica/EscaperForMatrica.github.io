@@ -1,0 +1,211 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+import { STATUS, FLOW, orderItems, getOrder, documentsFor, DOC_LABEL, PAY_METHOD, type Order } from '../../lib/orders';
+import { rub, shortDateTime, shortName, phoneHalf, phoneInput, humanDateTime, monthName, dayMonth } from '../../lib/format';
+
+const sp = Astro.url.searchParams;
+const q = (sp.get('q') || '').trim();
+const dt = sp.get('d') || '';
+const st = sp.get('s') || '';
+const now = new Date();
+const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+const month = sp.get('m') ?? curMonth;
+const openId = Number(sp.get('id')) || 0;
+
+const where: string[] = [];
+const params: any[] = [];
+if (q) {
+  const digits = q.replace(/\D/g, '');
+  where.push(`(cast(o.id as text) = ? or o.phone like ? or o.name like ? or o.name like ? or c.name like ?)`);
+  params.push(q.replace(/\D/g, ''), digits.length >= 3 ? `%${digits}%` : '__none__', `%${q}%`, `%${q[0]?.toUpperCase()}${q.slice(1)}%`, `%${q}%`);
+}
+if (dt === 'ozon' || dt === 'wb') {
+  where.push('o.delivery_type = ?');
+  params.push(dt);
+}
+if (st && st in STATUS) {
+  where.push('o.status = ?');
+  params.push(st);
+}
+if (month) {
+  where.push(`strftime('%Y-%m', o.created_at) = ?`);
+  params.push(month);
+}
+const orders = db.all<Order & { company_name?: string }>(
+  `select o.*, c.name as company_name from orders o left join companies c on c.id = o.company_id ${where.length ? 'where ' + where.join(' and ') : ''} order by o.created_at desc, o.id desc limit 200`,
+  ...params,
+);
+const kpi = {
+  fresh: db.value<number>(`select count(*) from orders where status = 'paid'`) || 0,
+  wbNoTrack: db.value<number>(`select count(*) from orders where delivery_type = 'wb' and track = '' and status in ('paid','assembling','shipping')`) || 0,
+  pvz: db.value<number>(`select count(*) from orders where status = 'pvz'`) || 0,
+  revenue: db.value<number>(`select coalesce(sum(total), 0) from orders where status not in ('pending','cancelled') and strftime('%Y-%m', created_at) = ?`, curMonth) || 0,
+};
+const months = db.all<{ m: string }>(`select distinct strftime('%Y-%m', created_at) as m from orders order by m desc`).map((r) => r.m);
+if (!months.includes(curMonth)) months.unshift(curMonth);
+const monthLabel = (m: string) => {
+  const [y, mm] = m.split('-').map(Number);
+  return `${monthName(mm - 1)} ${y}`;
+};
+const link = (patch: Record<string, string | null>) => {
+  const u = new URLSearchParams(sp);
+  for (const [k, v] of Object.entries(patch)) v === null ? u.delete(k) : u.set(k, v);
+  const s = u.toString();
+  return '/admin/orders' + (s ? `?${s}` : '');
+};
+const open = openId ? getOrder(openId) : undefined;
+const openItems = open ? orderItems(open.id) : [];
+const openDocs = open ? documentsFor(open.id) : [];
+const openCompany = open?.company_id ? db.get<any>('select * from companies where id = ?', open.company_id) : undefined;
+const needsTrack = (o: Order) => o.track === '' && ['paid', 'assembling', 'shipping'].includes(o.status);
+const csv = `/api/admin/orders.csv${Astro.url.search}`;
+---
+<Admin title="Заказы" active="orders">
+  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Заказы</h1><span class="grow"></span><a class="pl-btn pl-btn--secondary pl-btn--sm" href={csv}><i class="ic ic-upload ic-18" style="transform: rotate(180deg);"></i>Выгрузить CSV</a></div>
+  <div class="grid4" style="gap: 16px;">
+    <a class="kpi" href={link({ s: 'paid', m: '', id: null })} style="text-decoration: none;"><span class="sm muted">Новые, ждут сборки</span><b>{kpi.fresh}</b></a>
+    <a class="kpi" href={link({ d: 'wb', s: null, m: '', id: null })} style="text-decoration: none;"><span class="sm muted">WB без трек-номера</span><b>{kpi.wbNoTrack}</b></a>
+    <a class="kpi" href={link({ s: 'pvz', m: '', id: null })} style="text-decoration: none;"><span class="sm muted">Ждут в ПВЗ</span><b>{kpi.pvz}</b></a>
+    <div class="kpi"><span class="sm muted">Выручка за {monthName(now.getMonth()).toLowerCase()}</span><b>{rub(kpi.revenue)}</b></div>
+  </div>
+  <div class="adm-top">
+    <form action="/admin/orders" method="get" style="position: relative; width: 280px; max-width: 100%;" role="search">
+      {dt && <input type="hidden" name="d" value={dt} />}{st && <input type="hidden" name="s" value={st} />}<input type="hidden" name="m" value={month} />
+      <i class="ic ic-search ic-18 muted" style="position: absolute; left: 12px; top: 11px;"></i><input class="pl-input" name="q" value={q} style="height: 40px; padding-left: 38px; font-size: 14px;" placeholder="№ заказа, телефон, ФИО" aria-label="Поиск заказа" />
+    </form>
+    <div class="seg" style="width: 260px;"><a class={!dt ? 'on' : ''} href={link({ d: null, id: null })}>Все</a><a class={dt === 'ozon' ? 'on' : ''} href={link({ d: 'ozon', id: null })}>Ozon</a><a class={dt === 'wb' ? 'on' : ''} href={link({ d: 'wb', id: null })}>WB</a></div>
+    <label class="select"><span>Статус: {st ? STATUS[st as keyof typeof STATUS]?.label.toLowerCase() : 'все'}</span><i class="ic ic-chev-d ic-18"></i>
+      <select name="s" data-nav data-prefix="Статус: " aria-label="Статус"><option value="">все</option>{FLOW.map((k) => <option value={k} selected={k === st}>{STATUS[k].label.toLowerCase()}</option>)}</select>
+    </label>
+    <label class="select"><span>{month ? monthLabel(month) : 'Весь период'}</span><i class="ic ic-chev-d ic-18"></i>
+      <select name="m" data-nav aria-label="Период"><option value="" selected={!month}>Весь период</option>{months.map((m) => <option value={m} selected={m === month}>{monthLabel(m)}</option>)}</select>
+    </label>
+  </div>
+  <div class="tbl-box">
+    <table class="tbl">
+      <thead><tr><th>№</th><th>Дата</th><th>Покупатель</th><th>Доставка</th><th>Трек-номер</th><th class="num">Сумма</th><th>Статус</th></tr></thead>
+      <tbody>
+        {orders.map((o) => {
+          const s = STATUS[o.status];
+          return (
+            <tr class={`is-click ${o.id === openId ? 'sel' : ''}`} data-href={link({ id: String(o.id) })}>
+              <td><a href={link({ id: String(o.id) })} style="font-weight: 600; text-decoration: none;">{o.id}</a></td>
+              <td>{shortDateTime(o.created_at)}</td>
+              <td>{o.company_name ? <>{o.company_name}<br /><span class="xs muted">{shortName(o.name)}</span></> : <>{shortName(o.name) || '—'}<br /><span class="xs muted">{phoneHalf(o.phone)}</span></>}</td>
+              <td><span class="pl-badge pl-badge--neutral" style="height: 22px;">{o.delivery_type === 'wb' ? 'WB' : 'Ozon'}</span> {o.pvz_address.replace(/^г\.\s*[^,]+,\s*/, '')}</td>
+              <td>{o.track ? <span class="track">{o.track}</span> : needsTrack(o) ? <span class="pl-field__error" style="font-size: 13px;"><i class="ic ic-alert ic-16"></i>Не указан</span> : <span class="muted">—</span>}</td>
+              <td class="num">{rub(o.total)}</td>
+              <td><span class={`pl-badge ${s.cls}`}><i class={`ic ic-${s.icon} ic-16`}></i>{s.label}</span></td>
+            </tr>
+          );
+        })}
+        {!orders.length && <tr><td colspan="7" class="muted" style="text-align: center; padding: 32px 16px;">Заказов не найдено</td></tr>}
+      </tbody>
+    </table>
+  </div>
+
+  {open && (
+    <Fragment slot="after">
+      <a class="scrim" href={link({ id: null })} style="background: rgba(15,23,42,0.24);" aria-label="Закрыть карточку"></a>
+      <aside class="drawer" aria-label={`Заказ ${open.id}`} data-drawer={open.id}>
+        <div class="row between"><div class="col"><h2 class="t-h3" style="font-size: 24px;">Заказ № {open.id}</h2><span class="sm muted">{humanDateTime(open.created_at)} · {open.status === 'pending' ? (open.payment_method === 'invoice' ? 'счёт выставлен' : 'не оплачен') : `оплачен ${open.payment_method === 'sbp' ? 'через СБП' : open.payment_method === 'invoice' ? 'по счёту' : 'картой'}`}</span></div><a class="pl-icon-btn" href={link({ id: null })} aria-label="Закрыть"><i class="ic ic-close"></i></a></div>
+        <div class="col g8 box-line" style="padding: 16px;">
+          {openCompany && <div class="sum-row sm"><span class="muted">Компания</span><span style="text-align: right;">{openCompany.name}<br /><span class="xs muted">ИНН {openCompany.inn}</span></span></div>}
+          <div class="sum-row sm"><span class="muted">Покупатель</span><span>{open.name}</span></div>
+          <div class="sum-row sm"><span class="muted">Телефон</span><a class="link" href={`tel:+${open.phone}`}>{phoneInput(open.phone)}</a></div>
+          <div class="sum-row sm"><span class="muted">Email</span><span>{open.email || '—'}</span></div>
+          <div class="sum-row sm"><span class="muted">Доставка</span><span style="text-align: right;">{open.delivery_type === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}<br />{open.delivery_type === 'ozon' && open.city ? `г. ${open.city}, ${open.pvz_address}` : open.pvz_address}{open.pvz_hours && <><br /><span class="xs muted">{open.pvz_hours}</span></>}</span></div>
+          {open.storage_until && open.status === 'pvz' && <div class="sum-row sm"><span class="muted">Хранится до</span><span>{dayMonth(open.storage_until + ' 12:00:00')}</span></div>}
+        </div>
+        <div class="col g8">
+          <span class="pl-field__label">Состав · {openItems.reduce((a, i) => a + i.qty, 0)} шт.</span>
+          {openItems.map((i) => <div class="sum-row sm"><span>{i.name}, {i.variant.replace(' литров', ' л').replace(' литр', ' л')} × {i.qty}</span><span style="white-space: nowrap;">{rub(i.price * i.qty)}</span></div>)}
+          <div class="sum-row sm"><span class="muted">Доставка{open.promo_code ? ` · промокод ${open.promo_code}` : ''}</span><span>{rub(open.delivery_cost)}{open.discount > 0 && <> · <span class="save">{rub(-open.discount)}</span></>}</span></div>
+          <div class="sum-total"><span class="t-h4">Итого</span><b style="font-size: 20px;">{rub(open.total)}</b></div>
+          <span class="xs muted">Способ оплаты: {PAY_METHOD[open.payment_method] || 'не выбран'}</span>
+        </div>
+        <div class="hr"></div>
+        <form class="pl-field" data-track-form>
+          <label class="pl-field__label" for="track">Трек-номер {open.delivery_type === 'wb' ? 'Wildberries' : 'Ozon'}</label>
+          <div class="pl-promo"><input class="pl-input" id="track" name="track" value={open.track} placeholder={open.delivery_type === 'wb' ? 'WB 7712 0098 0000' : 'OZN-00000000-0000'} style="text-transform: none; letter-spacing: .02em;" /><button class="pl-btn pl-btn--primary" type="submit">Сохранить</button></div>
+          <span class="pl-field__hint">Покупатель увидит его в личном кабинете</span>
+        </form>
+        <div class="pl-field">
+          <span class="pl-field__label">Статус заказа</span>
+          <button class="select" type="button" style="height: 48px; justify-content: space-between; width: 100%;" data-status-btn aria-expanded="false"><span class={`pl-badge ${STATUS[open.status].cls}`}><i class={`ic ic-${STATUS[open.status].icon} ic-16`}></i>{STATUS[open.status].label}</span><i class="ic ic-chev-d ic-18"></i></button>
+          <div class="status-menu" hidden data-status-menu>
+            {FLOW.filter((k) => k !== open.status).map((k) => (
+              <button type="button" data-set-status={k}><span class={`pl-badge ${STATUS[k].cls}`}><i class={`ic ic-${STATUS[k].icon} ic-16`}></i>{STATUS[k].label}</span>{k === 'shipping' && !open.track && <span class="xs muted">нужен трек-номер</span>}{k === 'paid' && open.status === 'pending' && <span class="xs muted">{open.payment_method === 'invoice' ? 'оплата по счёту поступила' : 'подтвердить вручную'}</span>}</button>
+            ))}
+          </div>
+          <span class="pl-field__error" hidden data-status-err><i class="ic ic-alert ic-16"></i><span></span></span>
+        </div>
+        {open.kind === 'b2b' && (
+          <div class="col g8">
+            <span class="pl-field__label">Документы</span>
+            <div class="row g8" style="flex-wrap: wrap;">
+              {openDocs.map((d) => <span class="chip" style="cursor: default;"><i class="ic ic-doc ic-18"></i>{DOC_LABEL[d.kind] || d.kind} № {d.number}{d.file ? <a class="link xs" href={d.file} target="_blank" style="margin-left: 4px;">PDF</a> : d.kind === 'invoice' ? <a class="link xs" href={`/b2b/invoice/${open.id}`} target="_blank" style="margin-left: 4px;">открыть</a> : null}</span>)}
+            </div>
+            <label class="pl-btn pl-btn--secondary pl-btn--sm" style="align-self: flex-start; cursor: pointer;"><i class="ic ic-upload ic-18"></i>Загрузить УПД (PDF)<input type="file" accept="application/pdf" class="sr-only" data-upd /></label>
+          </div>
+        )}
+      </aside>
+    </Fragment>
+  )}
+</Admin>
+<script>
+  import { api, toast } from '../../scripts/app';
+  document.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const row = t.closest<HTMLElement>('tr[data-href]');
+    if (row && !t.closest('a')) location.href = row.dataset.href!;
+    const btn = t.closest<HTMLElement>('[data-status-btn]');
+    if (btn) {
+      const m = document.querySelector<HTMLElement>('[data-status-menu]')!;
+      m.hidden = !m.hidden;
+      btn.setAttribute('aria-expanded', String(!m.hidden));
+    }
+    const set = t.closest<HTMLElement>('[data-set-status]');
+    if (set) {
+      const id = Number(document.querySelector<HTMLElement>('[data-drawer]')!.dataset.drawer);
+      const r = await api('/api/admin/orders', { action: 'status', id, status: set.dataset.setStatus });
+      if (!r.ok) {
+        const err = document.querySelector<HTMLElement>('[data-status-err]')!;
+        err.hidden = false;
+        err.querySelector('span')!.textContent = r.error;
+        return;
+      }
+      location.reload();
+    }
+  });
+  document.querySelector<HTMLFormElement>('[data-track-form]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = Number(document.querySelector<HTMLElement>('[data-drawer]')!.dataset.drawer);
+    const track = (document.querySelector<HTMLInputElement>('#track')!).value;
+    const r = await api('/api/admin/orders', { action: 'track', id, track });
+    if (!r.ok) return toast(r.error, 'error');
+    toast('Трек-номер сохранён');
+    setTimeout(() => location.reload(), 400);
+  });
+  document.querySelector<HTMLInputElement>('[data-upd]')?.addEventListener('change', async (e) => {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (!f) return;
+    const fd = new FormData();
+    fd.append('file', f);
+    fd.append('kind', 'doc');
+    const up = await api('/api/admin/upload', fd);
+    if (!up.ok) return toast(up.error, 'error');
+    const id = Number(document.querySelector<HTMLElement>('[data-drawer]')!.dataset.drawer);
+    const r = await api('/api/admin/orders', { action: 'doc', id, kind: 'upd', file: up.url });
+    if (!r.ok) return toast(r.error, 'error');
+    location.reload();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.querySelector('[data-drawer]')) {
+      const u = new URL(location.href);
+      u.searchParams.delete('id');
+      location.href = u.toString();
+    }
+  });
+</script>

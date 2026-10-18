@@ -1,0 +1,14 @@
+---
+import Shop from '../layouts/Shop.astro';
+---
+<Shop title="Блог" mobileHeader={{ kind: 'title', title: 'Блог', back: '/' }}>
+  <main class="wrap" style="padding: 40px 32px 96px;">
+    <h1 class="t-h2 d-only" style="margin-bottom: 32px;">Блог</h1>
+    <section class="box col g16 empty-box" style="max-width: 720px; margin: 0 auto;">
+      <span class="state-ic state-empty"><i class="ic ic-doc ic-40"></i></span>
+      <h2 class="t-h3" style="font-size: 26px;">Статьи скоро появятся</h2>
+      <p class="muted" style="max-width: 400px;">Расскажем, как стирать экономнее с концентратами и чем отмыть самые сложные пятна. А пока — загляните в каталог.</p>
+      <a class="pl-btn pl-btn--primary" href="/catalog" style="margin-top: 8px;">В каталог</a>
+    </section>
+  </main>
+</Shop>

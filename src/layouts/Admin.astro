@@ -1,0 +1,68 @@
+---
+import '../styles/tokens.css';
+import '../styles/components.css';
+import '../styles/icons.css';
+import '../styles/screens.css';
+import '../styles/site.css';
+import fs from 'node:fs';
+import path from 'node:path';
+import { db } from '../lib/db';
+
+interface Props {
+  title: string;
+  active: 'products' | 'orders' | 'promos';
+}
+const { title, active } = Astro.props;
+const productsCount = db.value<number>('select count(*) from products') || 0;
+const newOrders = db.value<number>(`select count(*) from orders where status = 'paid'`) || 0;
+const hasFont = fs.existsSync(path.resolve(process.cwd(), 'public/fonts/TildaSans-Regular.woff2'));
+---
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{title} — PALADA admin</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    {hasFont && (
+      <style is:inline>
+        @font-face { font-family: "Tilda Sans"; src: url(/fonts/TildaSans-Regular.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+        @font-face { font-family: "Tilda Sans"; src: url(/fonts/TildaSans-Medium.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+        @font-face { font-family: "Tilda Sans"; src: url(/fonts/TildaSans-Semibold.woff2) format("woff2"); font-weight: 600; font-display: swap; }
+        @font-face { font-family: "Tilda Sans"; src: url(/fonts/TildaSans-Bold.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+      </style>
+    )}
+  </head>
+  <body>
+    <div class="adm" style="flex-wrap: wrap;">
+      <aside class="adm-side">
+        <a class="logo" href="/admin" style="padding: 4px 16px 20px;"><img src="/images/logo.png" alt="" width="24" height="21" />PALADA<span class="xs muted" style="font-weight: 400; letter-spacing: 0;">admin</span></a>
+        <a class={`side-a ${active === 'products' ? 'on' : ''}`} href="/admin/products"><i class="ic ic-grid ic-20"></i>Товары<span class="n">{productsCount}</span></a>
+        <a class={`side-a ${active === 'orders' ? 'on' : ''}`} href="/admin/orders"><i class="ic ic-box ic-20"></i>Заказы{newOrders > 0 && <span class="pl-badge pl-badge--accent" style="margin-left: auto; height: 22px; padding: 0 8px;">{newOrders} {newOrders === 1 ? 'новый' : 'новых'}</span>}</a>
+        <a class={`side-a ${active === 'promos' ? 'on' : ''}`} href="/admin/promos"><i class="ic ic-percent ic-20"></i>Промокоды</a>
+        <span class="grow"></span>
+        <div class="hr" style="margin: 8px 0;"></div>
+        <a class="side-a" href="/" style="color: var(--ink-muted);"><i class="ic ic-home ic-20"></i>Открыть сайт</a>
+        <form method="post" action="/api/auth/logout"><button class="side-a" type="submit" style="color: var(--ink-muted);"><i class="ic ic-logout ic-20"></i>Выйти</button></form>
+      </aside>
+      <main class="adm-main" style="flex: 999 1 560px;">
+        <slot />
+      </main>
+      <slot name="after" />
+    </div>
+    <script>
+      import '../scripts/app';
+    </script>
+  </body>
+</html>
+<style is:global>
+  @media (max-width: 767px) {
+    .adm { flex-direction: column; }
+    .adm-side { position: static; height: auto; width: 100%; flex-direction: row; align-items: center; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 12px; gap: 4px; }
+    .adm-side .logo { padding: 0 12px 0 4px !important; }
+    .adm-side .side-a { flex: none; height: 40px; padding: 0 12px; }
+    .adm-side .side-a .n, .adm-side .hr, .adm-side .grow { display: none; }
+    .adm-main { padding: 20px 16px 48px; }
+  }
+</style>

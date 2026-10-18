@@ -1,0 +1,145 @@
+---
+import type { Order } from '../lib/orders';
+import { STATUS, orderItems, itemsCount } from '../lib/orders';
+import { rub, dayMonth, goods } from '../lib/format';
+
+interface Props {
+  orders: Order[];
+  /** Номер заказа, раскрытого по умолчанию (первый активный). */
+  openId?: number;
+}
+const { orders, openId } = Astro.props;
+
+const sub = (o: Order) => `от ${dayMonth(o.created_at)} · ${o.delivery_type === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}`;
+const rightText = (o: Order) => {
+  if (o.status === 'received') return `Получен ${dayMonth(o.received_at)}`;
+  if (o.status === 'cancelled') return 'Заказ отменён';
+  return 'Трек-номер появится после отправки';
+};
+const note = (o: Order) => {
+  const ozon = o.delivery_type === 'ozon';
+  if (o.status === 'pvz') return ozon ? 'Покажите QR-код из приложения Ozon или назовите номер телефона.' : 'Покажите QR-код из приложения Wildberries или назовите номер телефона.';
+  if (o.status === 'shipping') return ozon ? 'Отследить посылку можно по трек-номеру в приложении Ozon.' : 'Отследить посылку можно по трек-номеру в приложении Wildberries.';
+  if (o.status === 'paid' || o.status === 'assembling') return 'Собираем заказ на заводе. Трек-номер появится после отправки.';
+  return '';
+};
+const shortAddr = (s: string) => s.replace(/^г\.\s*[^,]+,\s*/, '');
+const data = orders.map((o) => ({ o, items: orderItems(o.id), count: itemsCount(o.id) }));
+---
+<div class="col g16 d-only">
+  {data.map(({ o, items, count }) => {
+    const st = STATUS[o.status];
+    const open = o.id === openId;
+    return (
+      <article class={`order ${open ? 'open' : ''}`} data-order={o.id}>
+        <div class="order-h is-toggle" role="button" tabindex="0" aria-expanded={open ? 'true' : 'false'} data-order-toggle>
+          <div class="col"><b class="t-h4">Заказ № {o.id}</b><span class="sm muted" data-sub-closed hidden={open}>{sub(o)}</span><span class="sm muted" data-sub-open hidden={!open}>от {dayMonth(o.created_at)} · {goods(count)}</span></div>
+          <span class={`pl-badge ${st.cls}`}><i class={`ic ic-${st.icon} ic-16`}></i>{st.label}</span>
+          <span class="grow"></span>
+          <span data-sub-closed hidden={open}>{o.track ? <span class="track">{o.track}</span> : <span class="sm muted">{rightText(o)}</span>}</span>
+          <b class="pl-price">{rub(o.total)}</b>
+          <i class="ic ic-chev-d ic-20 muted chev"></i>
+        </div>
+        <div class="order-b collapsible">
+          <div class="col g16">
+            <div class="col g4">
+              <span class="xs muted">{o.delivery_type === 'wb' ? 'Пункт выдачи Wildberries' : 'Пункт выдачи Ozon'}</span>
+              <span>{o.delivery_type === 'ozon' && o.city ? `г. ${o.city}, ${o.pvz_address}` : o.pvz_address}</span>
+              {o.status === 'pvz' && o.storage_until && <span class="sm muted">Хранится до {dayMonth(o.storage_until + ' 12:00:00')}</span>}
+              {o.status === 'received' && <span class="sm muted">Получен {dayMonth(o.received_at)}</span>}
+            </div>
+            <div class="col g4">
+              <span class="xs muted">Трек-номер</span>
+              {o.track
+                ? <span class="row g8"><span class="track">{o.track}</span><button class="pl-icon-btn" type="button" aria-label="Скопировать" style="width: 32px; height: 32px;" data-copy={o.track}><i class="ic ic-copy ic-18"></i></button></span>
+                : <span class="sm muted">Появится после отправки</span>}
+            </div>
+            {note(o) && <div class="pl-note"><i class="ic ic-info"></i><span>{note(o)}</span></div>}
+          </div>
+          <div class="col g12">
+            <span class="xs muted">Состав заказа</span>
+            {items.map((i) => (
+              <div class="row g12"><span class="mini-imgs"><span><img src={i.img} alt="" width="56" height="56" /></span></span><span class="grow sm">{i.slug ? <a href={`/product/${i.slug}`}>{i.name}, {i.variant.replace(' литров', ' л').replace(' литр', ' л')}</a> : `${i.name}, ${i.variant}`}<br /><span class="muted">{i.qty} × {rub(i.price)}</span></span><span class="sm">{rub(i.qty * i.price)}</span></div>
+            ))}
+            <div class="hr"></div>
+            {o.discount > 0 && <div class="sum-row sm"><span class="muted">Промокод {o.promo_code}</span><span class="save">{rub(-o.discount)}</span></div>}
+            <div class="sum-row sm"><span class="muted">Доставка</span><span>{o.delivery_cost ? rub(o.delivery_cost) : 'бесплатно'}</span></div>
+            <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" style="align-self: flex-start;" data-repeat={o.id}><i class="ic ic-refresh ic-18"></i>Повторить заказ</button>
+          </div>
+        </div>
+      </article>
+    );
+  })}
+</div>
+
+<div class="col g12 m-only">
+  {data.map(({ o, items }) => {
+    const st = STATUS[o.status];
+    const open = o.id === openId;
+    return (
+      <article class={`order col ${open ? 'open' : ''}`} data-order={o.id}>
+        <div class="col g12" style="padding: 16px;">
+          <div class="row between"><b class="t-h4">№ {o.id}</b><b class="pl-price" style="font-size: 18px;">{rub(o.total)}</b></div>
+          <span class={`pl-badge ${st.cls}`} style="align-self: flex-start;"><i class={`ic ic-${st.icon} ic-16`}></i>{st.label}</span>
+          {open ? (
+            <>
+              <div class="col g4 sm"><span class="muted xs">{o.delivery_type === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}{o.status === 'pvz' && o.storage_until ? ` · хранится до ${dayMonth(o.storage_until + ' 12:00:00')}` : ''}</span><span>{shortAddr(o.pvz_address)}</span></div>
+              {o.track && <div class="row g8"><span class="track">{o.track}</span><button class="pl-icon-btn" type="button" aria-label="Скопировать" style="width: 32px; height: 32px;" data-copy={o.track}><i class="ic ic-copy ic-18"></i></button></div>}
+              <div class="mini-imgs">{items.slice(0, 4).map((i) => <span><img src={i.img} alt="" width="56" height="56" /></span>)}</div>
+            </>
+          ) : (
+            <>
+              <span class="xs muted">{o.status === 'received' ? `Получен ${dayMonth(o.received_at)}` : o.track ? `${o.delivery_type === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'} · ${shortAddr(o.pvz_address)}` : o.status === 'paid' ? `${dayMonth(o.created_at)} · ${o.delivery_type === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}` : 'Трек-номер появится после отправки'}</span>
+              {o.track && o.status !== 'received' && <span class="track" style="align-self: flex-start;">{o.track}</span>}
+            </>
+          )}
+          <div class="col g8 collapsible-m" hidden>
+            {items.map((i) => <div class="row g12 sm"><span class="grow">{i.name}, {i.variant}<br /><span class="muted xs">{i.qty} × {rub(i.price)}</span></span><span>{rub(i.qty * i.price)}</span></div>)}
+            <div class="sum-row sm"><span class="muted">Доставка</span><span>{o.delivery_cost ? rub(o.delivery_cost) : 'бесплатно'}</span></div>
+            <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" style="align-self: flex-start;" data-repeat={o.id}><i class="ic ic-refresh ic-18"></i>Повторить заказ</button>
+          </div>
+          {open && <button class="pl-btn pl-btn--secondary pl-btn--sm pl-btn--block" type="button" data-more-m>Подробнее о заказе</button>}
+        </div>
+      </article>
+    );
+  })}
+</div>
+
+<script>
+  import { api, toast } from '../scripts/app';
+  const toggle = (h: HTMLElement) => {
+    const art = h.closest('.order')!;
+    const open = art.classList.toggle('open');
+    h.setAttribute('aria-expanded', String(open));
+    art.querySelectorAll<HTMLElement>('[data-sub-closed]').forEach((el) => (el.hidden = open));
+    art.querySelectorAll<HTMLElement>('[data-sub-open]').forEach((el) => (el.hidden = !open));
+  };
+  document.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    if (t.closest('[data-copy], a, button:not([data-order-toggle])') && !t.closest('[data-more-m]') && !t.closest('[data-repeat]')) return;
+    const h = t.closest<HTMLElement>('[data-order-toggle]');
+    if (h) return toggle(h);
+    const more = t.closest<HTMLElement>('[data-more-m]');
+    if (more) {
+      const box = more.parentElement!.querySelector<HTMLElement>('.collapsible-m')!;
+      box.hidden = !box.hidden;
+      more.textContent = box.hidden ? 'Подробнее о заказе' : 'Свернуть';
+      return;
+    }
+    const rep = t.closest<HTMLButtonElement>('[data-repeat]');
+    if (rep) {
+      rep.classList.add('is-loading');
+      const r = await api('/api/cart/repeat', { orderId: Number(rep.dataset.repeat) });
+      rep.classList.remove('is-loading');
+      if (!r.ok) return toast(r.error || 'Не удалось повторить заказ', 'error');
+      location.href = r.redirect || '/cart';
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    const h = (e.target as HTMLElement).closest?.('[data-order-toggle]') as HTMLElement | null;
+    if (h && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      toggle(h);
+    }
+  });
+</script>
