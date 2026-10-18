@@ -94,6 +94,8 @@ document.addEventListener('click', async (e) => {
 
   if (t.closest('[data-cookie-ok]')) {
     document.cookie = 'cookie_ok=1; path=/; max-age=31536000; samesite=lax';
+    // Дублируем на сервере: в статичной версии (service worker) cookie браузера серверу не видны
+    fetch('/api/consent', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => {});
     document.querySelector('[data-cookie]')?.remove();
     document.querySelector('.page')?.classList.remove('cookie-open');
     return;
