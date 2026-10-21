@@ -3,7 +3,10 @@ import Shop from '../layouts/Shop.astro';
 import OtpStep from '../components/OtpStep.astro';
 
 const next = Astro.url.searchParams.get('next') || '';
-if (Astro.locals.user) return Astro.redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/account');
+const user = Astro.locals.user;
+// Покупатель, открывший админку, остаётся на форме входа: иначе /admin и /login отправляют друг к другу по кругу
+const denied = Boolean(user && next.startsWith('/admin') && user.role !== 'admin');
+if (user && !denied) return Astro.redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/account');
 const email = Astro.url.searchParams.get('email') || '';
 ---
 <Shop title="Вход в личный кабинет" header="compact" tool="account" tab="account" noindex footer={false} fabs={false} mobileHeader={{ kind: 'title', title: 'Вход', back: '/' }}>
@@ -11,6 +14,7 @@ const email = Astro.url.searchParams.get('email') || '';
     <div class="auth-card" data-form-card>
       <div class="seg"><span class="on">Вход</span><a href={`/register${next ? `?next=${encodeURIComponent(next)}` : ''}`}>Регистрация</a></div>
       <div class="col g8"><h1 class="t-h3" style="font-size: 26px;">Вход в личный кабинет</h1><p class="sm muted">Пришлём код подтверждения на почту. Пароль не нужен.</p></div>
+      {denied && <div class="pl-note pl-note--error" data-denied><i class="ic ic-shield"></i><span>Вы вошли как <b>{user!.email}</b> — у этого кабинета нет доступа к админке. Войдите с почтой администратора.</span></div>}
       <form class="col g20" data-auth-form data-purpose="login" data-next={next} novalidate>
         <div class="pl-field"><label class="pl-field__label" for="l-email">Email</label><input class="pl-input" id="l-email" name="email" value={email} type="email" inputmode="email" autocomplete="email" placeholder="name@mail.ru" data-req autofocus /><span class="pl-field__error" hidden data-err="email"><i class="ic ic-alert ic-16"></i><span></span></span></div>
         <button class="pl-btn pl-btn--primary pl-btn--block" type="submit">Получить код</button>
