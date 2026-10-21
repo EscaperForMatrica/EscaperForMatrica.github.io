@@ -1,7 +1,8 @@
 import type { Db } from './db';
-import { config, isProd } from './config';
+import { config } from './config';
 
-// Демо-наполнение: ассортимент и цены — из макетов. Всё редактируется в админке.
+// Начальное наполнение: ассортимент и цены — из макетов. Всё редактируется в админке.
+// Заказов, покупателей и промокодов в новой базе нет; тестовые — только по SEED_DEMO=true для разработки.
 
 const USAGE_NOTE = 'Используйте перчатки. Храните в недоступном для детей месте.';
 const MARK = ['Маркировка', '«Честный знак»'];
@@ -402,6 +403,33 @@ export function syncCatalog(db: Db) {
   });
 }
 
+// Промокоды из макета админки (только в тестовой базе)
+const DEMO_PROMOS: Array<[string, string, number, number, string | null, string | null, number | null, number, number]> = [
+  ['PALADA10', 'percent', 10, 0, null, '2026-12-31', null, 0, 214],
+  ['PERVYI300', 'fixed', 300, 1500, null, null, 1000, 1, 87],
+  ['OPT5', 'percent', 5, 10000, null, '2027-03-31', 50, 0, 12],
+  ['LETO20', 'percent', 20, 2000, '2026-06-01', '2026-08-31', 400, 0, 400],
+  ['SALE2024', 'percent', 15, 0, null, '2024-12-31', null, 0, 1032],
+];
+
+/** Схема v4: тестовые покупатели (почта на palada.demo), их заказы и нетронутые промокоды из макета — вон из рабочей базы. */
+export function purgeDemoData(db: Db) {
+  db.tx(() => {
+    const users = `select id from users where email like '%@palada.demo'`;
+    const orders = `select id from orders where email like '%@palada.demo' or user_id in (${users})`;
+    db.run(`delete from promo_uses where order_id in (${orders})`);
+    db.run(`delete from orders where id in (${orders})`);
+    db.run(`delete from sessions where user_id in (${users})`);
+    db.run(`delete from cart_items where owner in (select 'u:' || id from users where email like '%@palada.demo')`);
+    db.run(`delete from favorites where owner in (select 'u:' || id from users where email like '%@palada.demo')`);
+    db.run(`delete from users where email like '%@palada.demo'`);
+    db.run(`delete from companies where inn = '6164000000' and not exists (select 1 from users u where u.company_id = companies.id) and not exists (select 1 from orders o where o.company_id = companies.id)`);
+    for (const [code, , , , , , , , used] of DEMO_PROMOS) {
+      db.run('delete from promo_codes where code = ? and used = ? and not exists (select 1 from promo_uses u where u.promo_id = promo_codes.id)', code, used);
+    }
+  });
+}
+
 export function seed(db: Db) {
   db.tx(() => {
     CATEGORIES.forEach(([slug, name], i) => db.run('insert into categories (slug, name, sort) values (?, ?, ?)', slug, name, i));
@@ -412,21 +440,13 @@ export function seed(db: Db) {
       db.run('update products set related = ? where slug = ?', JSON.stringify(ids), p.slug);
     }
 
-    // Промокоды из макета админки
+    // Администраторы — из ADMIN_EMAILS (по умолчанию почта заказчика)
+    for (const email of config.adminEmails) db.run(`insert into users (email, name, role) values (?, 'Администратор', 'admin')`, email);
+
+    // Тестовые покупатели, заказы и промокоды — только для разработки, по явному SEED_DEMO=true
+    if (process.env.SEED_DEMO !== 'true') return;
     const promo = db.raw.prepare('insert into promo_codes (code, kind, value, min_total, starts_at, ends_at, usage_limit, once_per_customer, used) values (?,?,?,?,?,?,?,?,?)');
-    promo.run('PALADA10', 'percent', 10, 0, null, '2026-12-31', null, 0, 214);
-    promo.run('PERVYI300', 'fixed', 300, 1500, null, null, 1000, 1, 87);
-    promo.run('OPT5', 'percent', 5, 10000, null, '2027-03-31', 50, 0, 12);
-    promo.run('LETO20', 'percent', 20, 2000, '2026-06-01', '2026-08-31', 400, 0, 400);
-    promo.run('SALE2024', 'percent', 15, 0, null, '2024-12-31', null, 0, 1032);
-
-    // Администраторы — из ADMIN_EMAILS (по умолчанию почта заказчика); в разработке и демо ещё и демо-адрес
-    const admins = [...new Set([...config.adminEmails, ...(isProd && !config.demo ? [] : ['admin@palada.demo'])])];
-    for (const email of admins) db.run(`insert into users (email, name, role) values (?, 'Администратор', 'admin')`, email);
-
-    // Демо-покупатели и заказы — только в разработке (или SEED_DEMO=true): адреса на домене .demo,
-    // но в боевой базе им не место
-    if (isProd && !config.demo && process.env.SEED_DEMO !== 'true') return;
+    for (const [code, kind, value, min, starts, ends, limit, once, used] of DEMO_PROMOS) promo.run(code, kind, value, min, starts, ends, limit, once, used);
     const anna = Number(db.run(
       `insert into users (phone, name, email, newsletter, offer_accepted_at, pd_consent_at, created_at) values (?,?,?,1,datetime('now','-19 days'),datetime('now','-19 days'),datetime('now','-19 days'))`,
       '79001112233', 'Иванова Анна Сергеевна', 'anna@palada.demo',

@@ -1,4 +1,4 @@
-import { config } from './config';
+import { config, isProd } from './config';
 
 // Реквизиты по ИНН: DaData (если задан DADATA_API_KEY), иначе — тестовые данные для разработки.
 
@@ -50,8 +50,12 @@ export async function lookupInn(inn: string): Promise<CompanyInfo | null> {
       type: s.data.type === 'INDIVIDUAL' ? 'INDIVIDUAL' : 'LEGAL',
     };
   }
-  // Режим разработки: детерминированные тестовые реквизиты
   const legal = inn.length === 10;
+  // Без DaData на боевом сайте ничего не выдумываем: только ИНН, остальное — в карточке компании в админке
+  if (isProd && !config.demo) {
+    return { inn, kpp: '', ogrn: '', name: `${legal ? 'Организация' : 'ИП'}, ИНН ${inn}`, address: '', status: 'ACTIVE', type: legal ? 'LEGAL' : 'INDIVIDUAL' };
+  }
+  // Разработка и демо: детерминированные тестовые реквизиты
   const region = inn.slice(0, 4);
   return {
     inn,

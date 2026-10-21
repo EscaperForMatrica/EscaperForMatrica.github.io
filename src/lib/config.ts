@@ -20,10 +20,14 @@ export const isProd = import.meta.env.PROD || process.env.NODE_ENV === 'producti
 /** Почта заказчика: вход в админку и письма о заказах, пока на сервере не задан ADMIN_EMAILS и в «Настройках» — другая почта. */
 const OWNER_EMAIL = 'arm2730@mail.ru';
 
+const dbPath = env('DB_PATH') || path.resolve(process.cwd(), 'data/palada.db');
+
 export const config = {
-  siteUrl: env('SITE_URL').replace(/\/$/, ''),
-  dbPath: env('DB_PATH') || path.resolve(process.cwd(), 'data/palada.db'),
-  uploadsDir: path.resolve(process.cwd(), 'data/uploads'),
+  // На Render адрес сервиса известен из RENDER_EXTERNAL_URL, пока не задан свой домен
+  siteUrl: (env('SITE_URL') || env('RENDER_EXTERNAL_URL')).replace(/\/$/, ''),
+  dbPath,
+  // Загруженные фото и документы — рядом с базой, на том же постоянном диске
+  uploadsDir: path.resolve(env('UPLOADS_DIR') || path.join(path.dirname(dbPath), 'uploads')),
   adminEmails: (env('ADMIN_EMAILS') || OWNER_EMAIL).split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
   yookassa: {
     shopId: env('YOOKASSA_SHOP_ID'),

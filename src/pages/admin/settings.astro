@@ -12,7 +12,7 @@ const GROUPS: Array<[string, string, string?]> = [
 const statuses = [
   { label: 'Почта (коды входа, письма)', ok: mailLive(), on: 'SMTP настроен', off: config.demo ? 'демо-режим: коды показываются на экране' : 'не настроена — задайте SMTP_HOST и SMTP_FROM' },
   { label: 'Онлайн-оплата', ok: paymentsLive(), on: 'ЮKassa подключена', off: config.demo ? 'демо-режим: тестовая оплата' : 'не подключена — задайте ключи ЮKassa' },
-  { label: 'Реквизиты по ИНН', ok: Boolean(config.dadataKey), on: 'DaData подключена', off: 'тестовые реквизиты — задайте DADATA_API_KEY' },
+  { label: 'Реквизиты по ИНН', ok: Boolean(config.dadataKey), on: 'DaData подключена', off: config.demo ? 'демо-режим: тестовые реквизиты' : 'не подключена — по ИНН подставится только номер, задайте DADATA_API_KEY' },
 ];
 ---
 <Admin title="Настройки" active="settings">

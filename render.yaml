@@ -1,18 +1,37 @@
 # Render Blueprint: https://render.com/docs/blueprint-spec
-# Публичное демо магазина. Для боевого сайта: уберите DEMO_MODE, задайте ключи ЮKassa, SMTP, DaData,
-# ADMIN_EMAILS и подключите постоянный диск для data/ (на бесплатном тарифе база сбрасывается при перезапуске).
+# Боевой магазин: без демо-режима, база и загруженные фото на постоянном диске (нужен платный тариф Starter).
+# При создании Render спросит SMTP_PASS — пароль для внешних приложений ящика Mail.ru.
+# Ключи ЮKassa (YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY) и DaData (DADATA_API_KEY) добавляются потом в Environment.
 services:
   - type: web
-    name: palada-shop
+    name: palada
     runtime: node
-    plan: free
+    plan: starter
     region: frankfurt
     buildCommand: npm ci && npm run fonts && npm run build
     startCommand: npm start
     healthCheckPath: /
     autoDeploy: true
+    disk:
+      name: palada-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "24"
-      - key: DEMO_MODE
-        value: "true"
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_PATH
+        value: /var/data/palada.db
+      - key: ADMIN_EMAILS
+        value: arm2730@mail.ru
+      - key: SMTP_HOST
+        value: smtp.mail.ru
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        value: arm2730@mail.ru
+      - key: SMTP_FROM
+        value: PALADA <arm2730@mail.ru>
+      - key: SMTP_PASS
+        sync: false

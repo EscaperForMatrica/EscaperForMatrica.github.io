@@ -3,9 +3,9 @@ import path from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { config } from './config';
 
-/** Версия схемы: 2 — вход по email вместо телефона, таблица настроек; 3 — фото товаров. */
-const SCHEMA_VERSION = 3;
-import { seed, syncCatalog } from './seed';
+/** Версия схемы: 2 — вход по email вместо телефона, таблица настроек; 3 — фото товаров; 4 — без демо-данных. */
+const SCHEMA_VERSION = 4;
+import { seed, syncCatalog, purgeDemoData } from './seed';
 
 const SCHEMA = `
 create table if not exists categories (
@@ -303,7 +303,10 @@ export function getDb(): Db {
   if (!g.__paladaDb) {
     const db = new Db(config.dbPath);
     if (!db.value<number>('select count(*) from categories')) seed(db);
-    else if (db.openedAt < 3) syncCatalog(db);
+    else {
+      if (db.openedAt < 3) syncCatalog(db);
+      if (db.openedAt < 4) purgeDemoData(db);
+    }
     g.__paladaDb = db;
   }
   return g.__paladaDb;

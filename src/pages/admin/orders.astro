@@ -42,6 +42,7 @@ const kpi = {
   pvz: db.value<number>(`select count(*) from orders where status = 'pvz'`) || 0,
   revenue: db.value<number>(`select coalesce(sum(total), 0) from orders where status not in ('pending','cancelled') and strftime('%Y-%m', created_at) = ?`, curMonth) || 0,
 };
+const empty = !db.value<number>('select count(*) from orders');
 const months = db.all<{ m: string }>(`select distinct strftime('%Y-%m', created_at) as m from orders order by m desc`).map((r) => r.m);
 if (!months.includes(curMonth)) months.unshift(curMonth);
 const monthLabel = (m: string) => {
@@ -100,7 +101,7 @@ const csv = `/api/admin/orders.csv${Astro.url.search}`;
             </tr>
           );
         })}
-        {!orders.length && <tr><td colspan="7" class="muted" style="text-align: center; padding: 32px 16px;">Заказов не найдено</td></tr>}
+        {!orders.length && <tr><td colspan="7" class="muted" style="text-align: center; padding: 32px 16px;">{empty ? 'Заказов пока нет — первый появится здесь сразу после оформления' : 'Заказов не найдено'}</td></tr>}
       </tbody>
     </table>
   </div>
