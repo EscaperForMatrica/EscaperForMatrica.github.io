@@ -420,8 +420,8 @@ export function seed(db: Db) {
     promo.run('LETO20', 'percent', 20, 2000, '2026-06-01', '2026-08-31', 400, 0, 400);
     promo.run('SALE2024', 'percent', 15, 0, null, '2024-12-31', null, 0, 1032);
 
-    // Администраторы — из ADMIN_EMAILS; в разработке и демо без настройки — демо-адрес
-    const admins = config.adminEmails.length ? config.adminEmails : isProd && !config.demo ? [] : ['admin@palada.demo'];
+    // Администраторы — из ADMIN_EMAILS (по умолчанию почта заказчика); в разработке и демо ещё и демо-адрес
+    const admins = [...new Set([...config.adminEmails, ...(isProd && !config.demo ? [] : ['admin@palada.demo'])])];
     for (const email of admins) db.run(`insert into users (email, name, role) values (?, 'Администратор', 'admin')`, email);
 
     // Демо-покупатели и заказы — только в разработке (или SEED_DEMO=true): адреса на домене .demo,

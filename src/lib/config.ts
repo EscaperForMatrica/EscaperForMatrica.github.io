@@ -17,11 +17,14 @@ const env = (k: string) => (process.env[k] || '').trim();
 // В собранном сервере Vite подставляет import.meta.env.PROD = true, независимо от NODE_ENV
 export const isProd = import.meta.env.PROD || process.env.NODE_ENV === 'production';
 
+/** Почта заказчика: вход в админку и письма о заказах, пока на сервере не задан ADMIN_EMAILS и в «Настройках» — другая почта. */
+const OWNER_EMAIL = 'arm2730@mail.ru';
+
 export const config = {
   siteUrl: env('SITE_URL').replace(/\/$/, ''),
   dbPath: env('DB_PATH') || path.resolve(process.cwd(), 'data/palada.db'),
   uploadsDir: path.resolve(process.cwd(), 'data/uploads'),
-  adminEmails: env('ADMIN_EMAILS').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
+  adminEmails: (env('ADMIN_EMAILS') || OWNER_EMAIL).split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
   yookassa: {
     shopId: env('YOOKASSA_SHOP_ID'),
     secretKey: env('YOOKASSA_SECRET_KEY'),
@@ -60,7 +63,7 @@ export const shop = {
   bik: '',
   corrAccount: '',
   account: '',
-  notifyEmail: '',
+  notifyEmail: OWNER_EMAIL,
 };
 
 export type ShopInfo = typeof shop;
