@@ -87,6 +87,7 @@ button.tab:hover:not(.on) { color: var(--ink); }
 /* Галерея и метки карты — кликабельные */
 button.thumb { padding: 0; cursor: pointer; }
 .gal-main img { transition: opacity .2s; }
+.gal--single { grid-template-columns: 1fr; }
 button.mpin { padding: 0; cursor: pointer; transition: background-color .15s, transform .15s; }
 button.mpin:hover:not(.on) { background: var(--accent-tint); }
 .map-ctl button { width: 36px; height: 36px; border-radius: var(--radius-md); background: #fff; box-shadow: 0 2px 6px rgba(0,11,48,.12); display: inline-flex; align-items: center; justify-content: center; color: var(--ink); border: 0; cursor: pointer; }

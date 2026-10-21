@@ -39,7 +39,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (old !== null && price !== null && old <= price) return fail('Старая цена должна быть больше текущей — иначе скидка не покажется');
   const visible = bool(b.visible);
   if (visible && price === null) return fail('Чтобы показать товар на сайте, задайте цену');
-  const images = (Array.isArray(b.images) ? b.images : []).map((s: unknown) => str(s, 300)).filter((s: string) => s.startsWith('/uploads/') || s.startsWith('ph:'));
+  const images = (Array.isArray(b.images) ? b.images : []).map((s: unknown) => str(s, 300)).filter((s: string) => s.startsWith('/uploads/') || s.startsWith('/images/') || s.startsWith('ph:'));
   const specs = (Array.isArray(b.specs) ? b.specs : []).filter((r: unknown) => Array.isArray(r) && r.length === 2).map(([k, v]: string[]) => [str(k, 80), str(v, 200)]).filter(([k, v]: string[]) => k && v);
   const sku = str(b.sku, 40);
   if (sku && !specs.some(([k]: string[]) => k === 'Артикул')) specs.push(['Артикул', sku]);

@@ -44,10 +44,12 @@ const ld = {
     <nav class="crumbs"><a href="/">Главная</a><i class="ic ic-chev-r"></i><a href="/catalog">Каталог</a>{p.category_slug && <><i class="ic ic-chev-r"></i><a href={`/catalog?cat=${p.category_slug}`}>{p.category_name}</a></>}<i class="ic ic-chev-r"></i><span>{p.name}</span></nav>
     {!p.visible && <div class="dev-note" style="margin-bottom: 16px;"><i class="ic ic-eye-off ic-18"></i>Товар скрыт с сайта — страницу видите только вы как администратор.</div>}
     <div class="pdp">
-      <div class="gal" data-gallery>
-        <div class="thumbs">
-          {gallery.map((src, i) => <button class={`thumb ${i === 0 ? 'on' : ''}`} type="button" data-thumb={i} aria-label={`Фото ${i + 1}`}><img src={src} alt="" width="88" height="88" /></button>)}
-        </div>
+      <div class={`gal ${gallery.length > 1 ? '' : 'gal--single'}`} data-gallery>
+        {gallery.length > 1 && (
+          <div class="thumbs">
+            {gallery.map((src, i) => <button class={`thumb ${i === 0 ? 'on' : ''}`} type="button" data-thumb={i} aria-label={`Фото ${i + 1}`}><img src={src} alt="" width="88" height="88" /></button>)}
+          </div>
+        )}
         <div class="gal-main">
           <img src={gallery[0]} alt={alt} width="600" height="600" data-main data-srcs={JSON.stringify(gallery)} />
           {p.available ? p.discount > 0 && <span class="pl-badge pl-badge--discount" style="position: absolute; top: 20px; left: 20px;">−{p.discount}%</span> : <span class="pl-badge pl-badge--neutral" style="position: absolute; top: 20px; left: 20px;">Нет в наличии</span>}

@@ -25,7 +25,7 @@ if (cat) {
   where.push('c.slug = ?');
   params.push(cat);
 }
-const filters: Record<string, string> = { site: 'p.visible = 1', hidden: 'p.visible = 0', low: `p.stock < ${LOW}` };
+const filters: Record<string, string> = { site: 'p.visible = 1', hidden: 'p.visible = 0', low: `p.visible = 1 and p.stock < ${LOW}` };
 const base = where.length ? `where ${where.join(' and ')}` : '';
 const withF = (k: string) => [where.join(' and '), filters[k]].filter(Boolean).join(' and ');
 const countOf = (k: string) => db.value<number>(`select count(*) from products p left join categories c on c.id = p.category_id ${withF(k) ? 'where ' + withF(k) : ''}`, ...params) || 0;
