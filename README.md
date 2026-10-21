@@ -50,16 +50,23 @@ GitHub Pages умеет отдавать только статические ф�
 
 Публикацию делает GitHub Actions (`.github/workflows/pages.yml`) при каждом пуше в `main`. Локальная проверка: `npm run fonts && npm run build:pages`, затем раздать папку `dist-pages/client` любым статическим сервером на `localhost`.
 
-## Боевой сервер на Render
+## Боевой сайт на хостинге lite-host
 
-`render.yaml` — Blueprint для [Render](https://render.com): Node-сервис в Франкфурте на тарифе Starter (около $7 в месяц) с постоянным диском 1 ГБ (`/var/data`) под базу и загруженные фото. Демо-режим выключен: коды входа и письма о заказах уходят с arm2730@mail.ru через SMTP Mail.ru. Сборка `npm ci && npm run fonts && npm run build`, запуск `npm start`; каждый пуш в `main` пересобирает сайт, база на диске сохраняется.
+Магазин работает на cPanel-хостинге lite-host как Node.js-приложение под Phusion Passenger (Node 24 из `/opt/alt/alt-nodejs24`). Демо-режим выключен: коды входа и письма о заказах уходят с arm2730@mail.ru через SMTP Mail.ru.
 
-1. В ящике arm2730@mail.ru создайте пароль для внешних приложений: настройки → «Безопасность» → «Пароли для внешних приложений» (доступ к SMTP).
-2. Откройте `https://render.com/deploy?repo=https://github.com/EscaperForMatrica/EscaperForMatrica.github.io`, войдите в Render и привяжите карту (тариф платный).
-3. На вопрос про `SMTP_PASS` вставьте пароль из шага 1 и нажмите **Deploy Blueprint**. Через 3–5 минут сайт откроется на `https://palada.onrender.com` (или с суффиксом, если имя занято).
-4. Войдите в `/admin` с arm2730@mail.ru — код придёт на почту. В «Настройках» нажмите «Отправить тестовое письмо».
+- `~/palada-app` — приложение: `dist/`, `app.cjs` (точка входа для Passenger), `package.json`, `node_modules`, `.env` с боевыми настройками (в репозиторий не попадает).
+- `~/palada-data` — база `palada.db` и загруженные фото (`uploads/`); выкладка их не трогает.
+- `~/palada.su/.htaccess` — подключение домена к приложению (`PassengerAppRoot`, `PassengerNodejs`, `PassengerStartupFile app.cjs`). Панель «Setup Node.js App» на сервере отключена хостером, поэтому приложение подключено напрямую через `.htaccess`.
 
-Потом в Render → Environment добавляются ключи ЮKassa (`YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`) и DaData (`DADATA_API_KEY`), а в Settings → Custom Domains — свой домен (palada.su) и `SITE_URL`. Пока ключей ЮKassa нет, оформление честно сообщает, что онлайн-оплата не подключена, и предлагает написать в WhatsApp.
+Выкладка новой версии — одной командой (нужен SSH-доступ к хостингу): `DEPLOY_HOST=<ssh-хост> sh scripts/deploy.sh`. Скрипт собирает сайт, заливает `dist/`, ставит зависимости и перезапускает приложение (`tmp/restart.txt`).
+
+Чтобы сайт заработал на palada.su:
+1. В DNS домена (сейчас у ihc.ru) поменять A-записи `palada.su` и `www.palada.su` на `46.8.141.128`. NS и MX не трогать — почта домена останется у ihc.ru.
+2. После обновления DNS запустить AutoSSL в cPanel («SSL/TLS Status» → «Run AutoSSL») и включить переадресацию на HTTPS.
+3. Добавить в `~/palada-app/.env` строку `SMTP_PASS=…` — пароль для внешних приложений ящика arm2730@mail.ru (настройки → «Безопасность» → «Пароли для внешних приложений») — и перезапустить приложение: `touch ~/palada-app/tmp/restart.txt`.
+4. Войти в `/admin` с arm2730@mail.ru — код придёт на почту. В «Настройках» нажать «Отправить тестовое письмо».
+
+Потом в `.env` добавляются ключи ЮKassa (`YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`) и DaData (`DADATA_API_KEY`). Пока ключей ЮKassa нет, оформление честно сообщает, что онлайн-оплата не подключена, и предлагает написать в WhatsApp.
 
 ## Настройки (`.env`, см. `.env.example`)
 
@@ -79,7 +86,7 @@ GitHub Pages умеет отдавать только статические ф�
 
 ## Перед запуском в работу
 
-- **Шрифт Tilda Sans** в репозитории не хранится: `npm run fonts` скачивает официальный веб-пакет с CDN Тильды ([tilda.cc/ru/lp/tildasans](https://tilda.cc/ru/lp/tildasans/)) и кладёт Regular, Medium, Semibold и Bold в `public/fonts/`. На Render это происходит при сборке. Без шрифта сайт показывается запасным Arial.
+- **Шрифт Tilda Sans** в репозитории не хранится: `npm run fonts` скачивает официальный веб-пакет с CDN Тильды ([tilda.cc/ru/lp/tildasans](https://tilda.cc/ru/lp/tildasans/)) и кладёт Regular, Medium, Semibold и Bold в `public/fonts/`. Скрипт выкладки `scripts/deploy.sh` делает это сам. Без шрифта сайт показывается запасным Arial.
 - **Пункты выдачи Ozon** сейчас — справочник в `src/lib/delivery.ts` (14 городов, демо-адреса). Для работы замените `getPoints()` на API Ozon Logistics или их виджет выбора ПВЗ.
 - **Тексты документов** (`src/lib/legal.ts`) и **банковские реквизиты в счёте** (`src/pages/b2b/invoice/[id].astro`) оставлены заглушками в квадратных скобках, как в макете, — их готовят юрист и бухгалтерия.
 - **Фото товаров:** настоящие фото лежат в `public/images/products/` (товар вырезан с фона, квадрат 1000×1000, WebP с прозрачностью). Заглушки остались у 7 товаров без фото: средство для полов 1 л, универсальное средство, против плесени, от накипи, жидкое мыло 500 мл, шампунь 1 л, бальзам. Новые фото загружайте в админке (JPG/PNG/WebP) — они сохраняются в `data/uploads/`.
@@ -99,6 +106,7 @@ src/
   scripts/       клиентские сценарии (корзина, избранное, вход)
   sw/            сборка для GitHub Pages: адаптер Astro, service worker, заменители модулей Node
 scripts/         fonts.mjs (загрузка шрифта), build-pages.mjs, db-reset.mjs
-render.yaml      конфигурация деплоя на Render
+app.cjs          точка входа для Passenger на хостинге
+scripts/deploy.sh выкладка на хостинг lite-host
 .github/         публикация на GitHub Pages
 ```

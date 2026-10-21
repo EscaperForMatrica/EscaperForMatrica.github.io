@@ -26,10 +26,11 @@ export default defineConfig({
   security: {
     // В service worker нет заголовков Origin/Sec-Fetch-Site, а запросы и так не покидают браузер
     checkOrigin: !pages,
-    // За прокси хостинга (Render и т. п.) доверяем X-Forwarded-Host/Proto только для своих доменов
+    // За прокси хостинга (nginx → Apache → Passenger) доверяем X-Forwarded-Host/Proto только для своих доменов
     allowedDomains: [
-      { hostname: '**.onrender.com', protocol: 'https' },
-      ...(siteHost ? [{ hostname: siteHost, protocol: 'https' }] : []),
+      { hostname: 'palada.su', protocol: 'https' },
+      { hostname: 'www.palada.su', protocol: 'https' },
+      ...(siteHost && !siteHost.endsWith('palada.su') ? [{ hostname: siteHost, protocol: 'https' }] : []),
     ],
   },
   vite: {

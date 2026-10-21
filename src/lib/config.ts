@@ -23,8 +23,7 @@ const OWNER_EMAIL = 'arm2730@mail.ru';
 const dbPath = env('DB_PATH') || path.resolve(process.cwd(), 'data/palada.db');
 
 export const config = {
-  // На Render адрес сервиса известен из RENDER_EXTERNAL_URL, пока не задан свой домен
-  siteUrl: (env('SITE_URL') || env('RENDER_EXTERNAL_URL')).replace(/\/$/, ''),
+  siteUrl: env('SITE_URL').replace(/\/$/, ''),
   dbPath,
   // Загруженные фото и документы — рядом с базой, на том же постоянном диске
   uploadsDir: path.resolve(env('UPLOADS_DIR') || path.join(path.dirname(dbPath), 'uploads')),
