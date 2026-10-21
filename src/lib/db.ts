@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { config } from './config';
+
+/** Версия схемы: 2 — вход по email вместо телефона, таблица настроек. */
+const SCHEMA_VERSION = 2;
 import { seed } from './seed';
 
 const SCHEMA = `
@@ -55,9 +58,9 @@ create table if not exists companies (
 
 create table if not exists users (
   id integer primary key,
-  phone text unique not null,
+  email text unique not null,
+  phone text not null default '',
   name text not null default '',
-  email text not null default '',
   role text not null default 'customer',
   company_id integer references companies(id),
   position text not null default '',
@@ -77,7 +80,7 @@ create table if not exists sessions (
 
 create table if not exists otp_codes (
   id integer primary key,
-  phone text not null,
+  email text not null,
   code_hash text not null,
   purpose text not null,
   payload text not null default '{}',
@@ -86,7 +89,12 @@ create table if not exists otp_codes (
   created_at text not null default (datetime('now')),
   expires_at text not null
 );
-create index if not exists otp_phone on otp_codes(phone, created_at);
+create index if not exists otp_email on otp_codes(email, created_at);
+
+create table if not exists settings (
+  key text primary key,
+  value text not null default ''
+);
 
 create table if not exists cart_items (
   owner text not null,
@@ -210,7 +218,55 @@ class Db {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     this.raw = new DatabaseSync(file);
     this.raw.exec('pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 3000;');
+    this.migrate();
     this.raw.exec(SCHEMA);
+    this.raw.exec(`pragma user_version = ${SCHEMA_VERSION}`);
+  }
+
+  /** Обновление существующей базы до текущей схемы (до создания таблиц из SCHEMA). */
+  private migrate() {
+    const version = this.value<number>('pragma user_version') || 0;
+    const hasUsers = Boolean(this.value("select 1 from sqlite_master where type = 'table' and name = 'users'"));
+    if (!hasUsers || version >= SCHEMA_VERSION) return;
+    if (config.demo) {
+      // Демо-данные одноразовые: проще пересоздать базу целиком
+      const tables = this.all<{ name: string }>("select name from sqlite_master where type = 'table' and name not like 'sqlite_%'");
+      this.raw.exec('pragma foreign_keys = off');
+      for (const t of tables) this.raw.exec(`drop table if exists "${t.name}"`);
+      this.raw.exec('pragma foreign_keys = on');
+      return;
+    }
+    if (version < 2) {
+      // v2: вход по email. Пустые и повторяющиеся адреса получают заглушку, телефон становится обычным полем.
+      this.raw.exec('pragma foreign_keys = off');
+      this.tx(() => {
+        this.raw.exec(`
+          create table users_v2 (
+            id integer primary key,
+            email text unique not null,
+            phone text not null default '',
+            name text not null default '',
+            role text not null default 'customer',
+            company_id integer references companies(id),
+            position text not null default '',
+            newsletter integer not null default 0,
+            offer_accepted_at text,
+            pd_consent_at text,
+            created_at text not null default (datetime('now'))
+          );
+          insert into users_v2 (id, email, phone, name, role, company_id, position, newsletter, offer_accepted_at, pd_consent_at, created_at)
+            select id,
+              case when trim(email) = '' or exists (select 1 from users u2 where lower(u2.email) = lower(users.email) and u2.id < users.id)
+                then 'user' || id || '@no-email.local' else lower(trim(email)) end,
+              phone, name, role, company_id, position, newsletter, offer_accepted_at, pd_consent_at, created_at
+            from users;
+          drop table users;
+          alter table users_v2 rename to users;
+          drop table if exists otp_codes;
+        `);
+      });
+      this.raw.exec('pragma foreign_keys = on');
+    }
   }
   all<T = Row>(sql: string, ...params: SQLInputValue[]): T[] {
     return this.raw.prepare(sql).all(...params) as T[];

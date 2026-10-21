@@ -134,9 +134,9 @@ const shortAddr = (o: any) => (o.delivery_type === 'ozon' && o.city ? `г. ${o.c
             <div class="pl-field"><label class="pl-field__label" for="c-name">ФИО</label><input class="pl-input" id="c-name" name="name" value={user.name} /></div>
             <div class="grid2" style="gap: 20px 24px;">
               <div class="pl-field"><label class="pl-field__label" for="c-pos">Должность <i>(необязательно)</i></label><input class="pl-input" id="c-pos" name="position" value={user.position} placeholder="Например, закупщик" /></div>
-              <div class="pl-field"><label class="pl-field__label" for="c-email">Email для счетов</label><input class="pl-input" id="c-email" name="email" type="email" value={user.email} /></div>
+              <div class="pl-field"><label class="pl-field__label">Email для входа и счетов</label><input class="pl-input is-disabled" value={user.email} disabled /><span class="pl-field__hint">Чтобы сменить почту, напишите менеджеру</span></div>
             </div>
-            <div class="pl-field"><label class="pl-field__label">Телефон для входа</label><input class="pl-input is-disabled" value={phoneInput(user.phone)} disabled /><span class="pl-field__hint">Вход — по коду из СМС</span></div>
+            <div class="pl-field"><label class="pl-field__label" for="c-phone">Телефон</label><input class="pl-input" id="c-phone" name="phone" type="tel" value={user.phone ? phoneInput(user.phone) : ''} placeholder="+7 (___) ___-__-__" data-phone /><span class="pl-field__hint">Менеджер позвонит, если понадобится уточнить заказ</span></div>
             <span class="pl-field__error" hidden data-err><i class="ic ic-alert ic-16"></i><span></span></span>
             <div class="row g12"><button class="pl-btn pl-btn--primary" type="submit">Сохранить</button><span class="row g8 sm save" hidden data-saved><i class="ic ic-check ic-18"></i>Изменения сохранены</span></div>
           </form>

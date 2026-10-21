@@ -156,7 +156,7 @@ body.no-scroll { overflow: hidden; }
 .adm h1, .adm h2, .adm h3, .adm h4, .adm p { margin: 0; }
 .tbl td.nm { min-width: 240px; }
 .tbl td.nw, .tbl th { white-space: nowrap; }
-.adm-side { position: sticky; top: 0; height: 100vh; }
+.adm-side { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 .adm .pl-input.sm, .adm .search-sm .pl-input { height: 40px; font-size: 14px; }
 .adm .drawer { position: fixed; z-index: 30; overflow-y: auto; }
 .adm .scrim { position: fixed; z-index: 29; }

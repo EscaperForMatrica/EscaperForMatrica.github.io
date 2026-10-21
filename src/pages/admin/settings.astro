@@ -1,0 +1,76 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { SETTING_DEFS, settingValue } from '../../lib/settings';
+import { mailLive, paymentsLive, config } from '../../lib/config';
+
+const GROUPS: Array<[string, string, string?]> = [
+  ['contacts', 'Контакты на сайте'],
+  ['legal', 'Реквизиты продавца', 'Используются в документах, подвале и счетах'],
+  ['bank', 'Банковские реквизиты', 'Подставляются в счёт на оплату для юрлиц'],
+  ['notify', 'Уведомления'],
+];
+const statuses = [
+  { label: 'Почта (коды входа, письма)', ok: mailLive(), on: 'SMTP настроен', off: config.demo ? 'демо-режим: коды показываются на экране' : 'не настроена — задайте SMTP_HOST и SMTP_FROM' },
+  { label: 'Онлайн-оплата', ok: paymentsLive(), on: 'ЮKassa подключена', off: config.demo ? 'демо-режим: тестовая оплата' : 'не подключена — задайте ключи ЮKassa' },
+  { label: 'Реквизиты по ИНН', ok: Boolean(config.dadataKey), on: 'DaData подключена', off: 'тестовые реквизиты — задайте DADATA_API_KEY' },
+];
+---
+<Admin title="Настройки" active="settings">
+  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Настройки</h1></div>
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+    <form class="col g24" style="flex: 999 1 520px; min-width: 0;" data-settings novalidate>
+      {GROUPS.map(([g, title, hint]) => (
+        <section class="box-line col g16">
+          <div class="col g4"><h2 class="t-h4">{title}</h2>{hint && <span class="sm muted">{hint}</span>}</div>
+          <div class="grid2" style="gap: 16px 20px;">
+            {SETTING_DEFS.filter((d) => d.group === g).map((d) => (
+              <div class={`pl-field ${d.key === 'address' || d.key === 'notifyEmail' ? 'span-2' : ''}`}>
+                <label class="pl-field__label" for={`s-${d.key}`}>{d.label}</label>
+                <input class="pl-input" id={`s-${d.key}`} name={d.key} value={settingValue(d.key)} placeholder={d.placeholder || ''} />
+                {d.hint && <span class="pl-field__hint">{d.hint}</span>}
+                <span class="pl-field__error" hidden data-err={d.key}><i class="ic ic-alert ic-16"></i><span></span></span>
+              </div>
+            ))}
+          </div>
+          {g === 'notify' && <div class="row g12" style="flex-wrap: wrap;"><button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" data-test-mail><i class="ic ic-check ic-18"></i>Отправить тестовое письмо</button><span class="sm muted" data-test-result></span></div>}
+        </section>
+      ))}
+      <div class="row g12"><button class="pl-btn pl-btn--primary" type="submit">Сохранить</button><span class="row g8 sm save" hidden data-saved><i class="ic ic-check ic-18"></i>Настройки сохранены</span></div>
+    </form>
+    <section class="box-line col g12" style="flex: 1 1 300px; max-width: 400px;">
+      <h2 class="t-h4">Подключения</h2>
+      {statuses.map((s) => (
+        <div class="row g12" style="align-items: flex-start;">
+          <span class={`pl-badge ${s.ok ? 'pl-badge--accent' : 'pl-badge--neutral'}`} style="height: 22px; flex: none;"><span class="pl-badge__dot"></span>{s.ok ? 'да' : 'нет'}</span>
+          <div class="col"><b style="font-weight: 600; font-size: 15px;">{s.label}</b><span class="sm muted">{s.ok ? s.on : s.off}</span></div>
+        </div>
+      ))}
+      <p class="xs muted">Ключи сервисов задаются на сервере в файле .env — так они не попадают в базу и админку.</p>
+    </section>
+  </div>
+</Admin>
+<script>
+  import { api } from '../../scripts/app';
+  const form = document.querySelector<HTMLFormElement>('[data-settings]')!;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    form.querySelectorAll<HTMLElement>('[data-err]').forEach((el) => (el.hidden = true));
+    const r = await api('/api/admin/settings', Object.fromEntries(new FormData(form).entries()));
+    const saved = form.querySelector<HTMLElement>('[data-saved]')!;
+    saved.hidden = !r.ok;
+    if (!r.ok) {
+      const el = form.querySelector<HTMLElement>(`[data-err="${r.field}"]`);
+      if (el) {
+        el.hidden = false;
+        el.querySelector('span')!.textContent = r.error;
+      } else alert(r.error);
+    }
+  });
+  form.querySelector('[data-test-mail]')!.addEventListener('click', async () => {
+    const out = form.querySelector<HTMLElement>('[data-test-result]')!;
+    const to = (form.elements.namedItem('notifyEmail') as HTMLInputElement).value.split(',')[0].trim();
+    out.textContent = 'Отправляем…';
+    const r = await api('/api/admin/settings', { action: 'test-mail', to });
+    out.textContent = !r.ok ? r.error : r.live ? `Письмо отправлено на ${to || 'вашу почту'}` : 'Почта не настроена — письмо записано в лог сервера';
+  });
+</script>

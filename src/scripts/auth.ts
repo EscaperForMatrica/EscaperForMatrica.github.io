@@ -1,4 +1,4 @@
-// Вход и регистрация по коду из СМС: форма → отправка кода → ввод 4 цифр → редирект.
+// Вход и регистрация по коду из письма: форма → отправка кода на почту → ввод 4 цифр → редирект.
 import { api } from './app';
 
 const form = document.querySelector<HTMLFormElement>('[data-auth-form]');
@@ -15,7 +15,7 @@ if (form && step) {
   const timer = step.querySelector<HTMLElement>('[data-otp-timer]')!;
   const left = step.querySelector<HTMLElement>('[data-otp-left]')!;
   const resend = step.querySelector<HTMLButtonElement>('[data-otp-resend]')!;
-  let phone = '';
+  let email = '';
   let tick: number | undefined;
 
   const fieldErr = (name: string, msg: string | null) => {
@@ -33,7 +33,7 @@ if (form && step) {
   // Кнопка активна, когда заполнены поля и отмечены обязательные согласия (как в макете)
   const ready = () => {
     const req = Array.from(form.querySelectorAll<HTMLInputElement>('[data-req]'));
-    const ok = req.every((i) => (i.type === 'checkbox' ? i.checked : i.value.trim().length > (i.name === 'phone' ? 17 : 1)));
+    const ok = req.every((i) => (i.type === 'checkbox' ? i.checked : i.name === 'email' ? /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(i.value.trim()) : i.value.trim().length > 1));
     submit.classList.toggle('is-disabled', !ok);
     const hint = form.querySelector<HTMLElement>('[data-ready-hint]');
     if (hint) hint.hidden = ok;
@@ -81,7 +81,8 @@ if (form && step) {
     if (!ready()) {
       form.querySelectorAll<HTMLInputElement>('[data-req]').forEach((i) => {
         const empty = i.type === 'checkbox' ? !i.checked : i.value.trim().length < 2;
-        if (empty) fieldErr(i.name, i.type === 'checkbox' ? (i.name === 'pd' ? 'Без согласия мы не сможем создать кабинет' : 'Нужно принять условия') : i.name === 'phone' ? 'Введите номер телефона' : 'Заполните поле');
+        const badEmail = i.name === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(i.value.trim());
+        if (empty || badEmail) fieldErr(i.name, i.type === 'checkbox' ? (i.name === 'pd' ? 'Без согласия мы не сможем создать кабинет' : 'Нужно принять условия') : i.name === 'email' ? 'Проверьте адрес почты' : 'Заполните поле');
       });
       return;
     }
@@ -91,9 +92,9 @@ if (form && step) {
     if (!r.ok) {
       if (r.wait && !r.field) return openStep(r.wait);
       let msg = r.error;
-      if (r.register) msg += ` <a class="link" href="/register?phone=${encodeURIComponent(String(new FormData(form).get('phone')))}">Регистрация</a>`;
+      if (r.register) msg += ` <a class="link" href="/register?email=${encodeURIComponent(String(new FormData(form).get('email')))}">Регистрация</a>`;
       if (r.login) msg += ` <a class="link" href="/login">Войти</a>`;
-      fieldErr(r.field || 'phone', msg);
+      fieldErr(r.field || 'email', msg);
       return;
     }
     showDev(r.devCode);
@@ -101,8 +102,8 @@ if (form && step) {
   });
 
   const openStep = (wait: number) => {
-    phone = String(new FormData(form).get('phone') || '');
-    step.querySelector('[data-otp-phone]')!.textContent = phone.replace(/[()]/g, '').replace(/\s+/g, ' ');
+    email = String(new FormData(form).get('email') || '').trim().toLowerCase();
+    step.querySelector('[data-otp-email]')!.textContent = email;
     form.closest('[data-form-card]')!.setAttribute('hidden', '');
     document.querySelectorAll<HTMLElement>('[data-hide-on-code]').forEach((el) => (el.hidden = true));
     step.hidden = false;
@@ -137,7 +138,7 @@ if (form && step) {
   const verify = async () => {
     if (code().length !== 4) return;
     go.classList.add('is-loading');
-    const r = await api('/api/auth/verify', { phone, code: code(), next });
+    const r = await api('/api/auth/verify', { email, code: code(), next });
     if (r.ok) {
       location.href = r.redirect || '/account';
       return;

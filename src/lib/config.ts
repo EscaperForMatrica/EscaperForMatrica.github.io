@@ -21,14 +21,21 @@ export const config = {
   siteUrl: env('SITE_URL').replace(/\/$/, ''),
   dbPath: env('DB_PATH') || path.resolve(process.cwd(), 'data/palada.db'),
   uploadsDir: path.resolve(process.cwd(), 'data/uploads'),
-  adminPhones: env('ADMIN_PHONES').split(',').map((p) => p.replace(/\D/g, '')).filter(Boolean),
+  adminEmails: env('ADMIN_EMAILS').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
   yookassa: {
     shopId: env('YOOKASSA_SHOP_ID'),
     secretKey: env('YOOKASSA_SECRET_KEY'),
     receipts: env('YOOKASSA_RECEIPTS') === 'true',
     vatCode: Number(env('YOOKASSA_VAT_CODE') || 1),
   },
-  smsRuApiId: env('SMSRU_API_ID'),
+  smtp: {
+    host: env('SMTP_HOST'),
+    port: Number(env('SMTP_PORT') || 465),
+    secure: env('SMTP_SECURE') ? env('SMTP_SECURE') === 'true' : Number(env('SMTP_PORT') || 465) === 465,
+    user: env('SMTP_USER'),
+    pass: env('SMTP_PASS'),
+    from: env('SMTP_FROM'),
+  },
   /** Публичное демо: код входа на экране, тестовая оплата, демо-данные. Не включать на боевом сайте. */
   demo: env('DEMO_MODE') === 'true',
   dadataKey: env('DADATA_API_KEY'),
@@ -46,7 +53,17 @@ export const shop = {
   supportPhone: '+7 918 818-17-22',
   supportTel: '+79188181722',
   whatsapp: 'https://wa.me/79188181722',
+  // Заполняются в админке («Настройки»): юр. адрес и банковские реквизиты для счетов, почта для уведомлений
+  address: '',
+  kpp: '',
+  bankName: '',
+  bik: '',
+  corrAccount: '',
+  account: '',
+  notifyEmail: '',
 };
 
+export type ShopInfo = typeof shop;
+
 export const paymentsLive = () => Boolean(config.yookassa.shopId && config.yookassa.secretKey);
-export const smsLive = () => Boolean(config.smsRuApiId);
+export const mailLive = () => Boolean(config.smtp.host && config.smtp.from);

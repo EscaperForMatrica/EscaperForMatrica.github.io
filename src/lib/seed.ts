@@ -280,23 +280,23 @@ export function seed(db: Db) {
     promo.run('LETO20', 'percent', 20, 2000, '2026-06-01', '2026-08-31', 400, 0, 400);
     promo.run('SALE2024', 'percent', 15, 0, null, '2024-12-31', null, 0, 1032);
 
-    // Администраторы — из ADMIN_PHONES; в разработке без настройки — демо-номер
-    const admins = config.adminPhones.length ? config.adminPhones : isProd && !config.demo ? [] : ['79000000000'];
-    for (const phone of admins) db.run(`insert into users (phone, name, role) values (?, 'Администратор', 'admin')`, phone);
+    // Администраторы — из ADMIN_EMAILS; в разработке и демо без настройки — демо-адрес
+    const admins = config.adminEmails.length ? config.adminEmails : isProd && !config.demo ? [] : ['admin@palada.demo'];
+    for (const email of admins) db.run(`insert into users (email, name, role) values (?, 'Администратор', 'admin')`, email);
 
-    // Демо-покупатели и заказы — только в разработке (или SEED_DEMO=true): номера вымышленные,
+    // Демо-покупатели и заказы — только в разработке (или SEED_DEMO=true): адреса на домене .demo,
     // но в боевой базе им не место
     if (isProd && !config.demo && process.env.SEED_DEMO !== 'true') return;
     const anna = Number(db.run(
       `insert into users (phone, name, email, newsletter, offer_accepted_at, pd_consent_at, created_at) values (?,?,?,1,datetime('now','-19 days'),datetime('now','-19 days'),datetime('now','-19 days'))`,
-      '79001112233', 'Иванова Анна Сергеевна', 'anna.ivanova@mail.ru',
+      '79001112233', 'Иванова Анна Сергеевна', 'anna@palada.demo',
     ).lastInsertRowid);
     const company = Number(db.run(
       `insert into companies (inn, kpp, ogrn, name, address, status) values ('6164000000','616401001','1186100000000','ООО «Чистый дом»','г. Ростов-на-Дону, ул. Примерная, 1','ACTIVE')`,
     ).lastInsertRowid);
     const olga = Number(db.run(
       `insert into users (phone, name, email, role, company_id, position, offer_accepted_at, pd_consent_at) values (?,?,?,'b2b',?,?,datetime('now','-40 days'),datetime('now','-40 days'))`,
-      '79002223344', 'Смирнова Ольга Петровна', 'zakupki@chistydom.ru', company, 'закупщик',
+      '79002223344', 'Смирнова Ольга Петровна', 'zakupki@palada.demo', company, 'закупщик',
     ).lastInsertRowid);
 
     // Демо-заказы — чтобы кабинет и админка не были пустыми
@@ -331,19 +331,19 @@ export function seed(db: Db) {
       o.events.forEach((st, i) => db.run(`insert into order_events (order_id, status, at) values (?, ?, datetime('now','-${o.daysAgo} days','+${i * 20} hours'))`, o.id, st));
     };
 
-    const ANNA = { user: anna, name: 'Иванова Анна Сергеевна', phone: '79001112233', email: 'anna.ivanova@mail.ru' };
+    const ANNA = { user: anna, name: 'Иванова Анна Сергеевна', phone: '79001112233', email: 'anna@palada.demo' };
     mk({ ...ANNA, id: 10398, status: 'received', type: 'ozon', address: 'ул. Большая Садовая, 47', delivery: 99, lines: [['gel-dlya-stirki-cvetnogo', 2]], method: 'card', daysAgo: 19, events: ['paid', 'assembling', 'shipping', 'pvz', 'received'], receivedDaysAgo: 14, track: 'OZN-47880214-0004' });
     mk({ ...ANNA, id: 10471, status: 'pvz', type: 'ozon', address: 'ул. Большая Садовая, 47', hours: 'Ежедневно 9:00–21:00', delivery: 132, lines: [['gel-dlya-stirki-cvetnogo', 1], ['gel-dlya-stirki-chernogo', 1], ['antizhir-dlya-kuhni', 1]], method: 'card', daysAgo: 5, track: 'OZN-48120937-0018', storageDays: 5, events: ['paid', 'assembling', 'shipping', 'pvz'] });
     mk({ ...ANNA, id: 10476, status: 'shipping', type: 'wb', address: 'г. Ростов-на-Дону, ул. Пушкинская, 140', delivery: 199, lines: [['gel-dlya-stirki-belogo', 1], ['shampun-1l', 1]], method: 'sbp', daysAgo: 3, track: 'WB 7712 0094 3381', events: ['paid', 'assembling', 'shipping'] });
     mk({ ...ANNA, id: 10479, status: 'assembling', type: 'ozon', address: 'пр. Ворошиловский, 12', delivery: 0, lines: [['belizna-gel-5l', 1]], method: 'card', daysAgo: 2, events: ['paid', 'assembling'] });
     mk({ ...ANNA, id: 10482, status: 'paid', type: 'ozon', address: 'ул. Большая Садовая, 47', hours: 'Ежедневно 9:00–21:00', delivery: 99, lines: [['gel-dlya-stirki-cvetnogo', 2], ['sredstvo-dlya-vannyh', 1], ['gel-dlya-posudy-yabloko', 3]], promo: ['PALADA10', 279], method: 'card', daysAgo: 1, events: ['paid'] });
 
-    mk({ id: 10483, name: 'Петров Игорь Викторович', phone: '79285550123', email: 'i.petrov@yandex.ru', status: 'paid', type: 'wb', address: 'г. Ростов-на-Дону, ул. Пушкинская, 140', delivery: 199, lines: [['gel-dlya-stirki-cvetnogo', 2], ['sredstvo-dlya-vannyh', 1], ['gel-dlya-posudy-yabloko', 3]], promo: ['PALADA10', 279], method: 'sbp', daysAgo: 0, events: ['paid'] });
-    mk({ id: 10480, name: 'Ахмедова Лейла Руслановна', phone: '79631200000', email: 'leyla.a@mail.ru', status: 'assembling', type: 'wb', address: 'г. Ростов-на-Дону, пр. Шолохова, 31', delivery: 199, lines: [['sredstvo-dlya-vannyh', 2], ['wc-gel', 1], ['sredstvo-dlya-stekol', 1], ['gel-dlya-posudy-vishnya', 1]], method: 'card', daysAgo: 2, events: ['paid', 'assembling'] });
-    mk({ id: 10461, name: 'Сидоров Кирилл Андреевич', phone: '79054310000', email: 'k.sidorov@gmail.com', status: 'pvz', type: 'wb', address: 'г. Ростов-на-Дону, ул. Ленина, 88', delivery: 199, lines: [['gel-dlya-stirki-cvetnogo', 2], ['gel-dlya-stirki-chernogo', 1], ['zhidkoe-mylo-5l', 1]], method: 'card', daysAgo: 8, track: 'WB 7712 0091 0457', storageDays: 3, events: ['paid', 'assembling', 'shipping', 'pvz'] });
-    mk({ id: 10440, name: 'Мамедов Тимур Шамилевич', phone: '79887020000', email: 't.mamedov@mail.ru', status: 'received', type: 'wb', address: 'г. Ростов-на-Дону, ул. Красноармейская, 5', delivery: 0, lines: [['gel-dlya-stirki-cvetnogo', 1]], method: 'sbp', daysAgo: 15, track: 'WB 7712 0087 2219', receivedDaysAgo: 9, events: ['paid', 'assembling', 'shipping', 'pvz', 'received'] });
+    mk({ id: 10483, name: 'Петров Игорь Викторович', phone: '79285550123', email: 'petrov@palada.demo', status: 'paid', type: 'wb', address: 'г. Ростов-на-Дону, ул. Пушкинская, 140', delivery: 199, lines: [['gel-dlya-stirki-cvetnogo', 2], ['sredstvo-dlya-vannyh', 1], ['gel-dlya-posudy-yabloko', 3]], promo: ['PALADA10', 279], method: 'sbp', daysAgo: 0, events: ['paid'] });
+    mk({ id: 10480, name: 'Ахмедова Лейла Руслановна', phone: '79631200000', email: 'leyla@palada.demo', status: 'assembling', type: 'wb', address: 'г. Ростов-на-Дону, пр. Шолохова, 31', delivery: 199, lines: [['sredstvo-dlya-vannyh', 2], ['wc-gel', 1], ['sredstvo-dlya-stekol', 1], ['gel-dlya-posudy-vishnya', 1]], method: 'card', daysAgo: 2, events: ['paid', 'assembling'] });
+    mk({ id: 10461, name: 'Сидоров Кирилл Андреевич', phone: '79054310000', email: 'sidorov@palada.demo', status: 'pvz', type: 'wb', address: 'г. Ростов-на-Дону, ул. Ленина, 88', delivery: 199, lines: [['gel-dlya-stirki-cvetnogo', 2], ['gel-dlya-stirki-chernogo', 1], ['zhidkoe-mylo-5l', 1]], method: 'card', daysAgo: 8, track: 'WB 7712 0091 0457', storageDays: 3, events: ['paid', 'assembling', 'shipping', 'pvz'] });
+    mk({ id: 10440, name: 'Мамедов Тимур Шамилевич', phone: '79887020000', email: 'mamedov@palada.demo', status: 'received', type: 'wb', address: 'г. Ростов-на-Дону, ул. Красноармейская, 5', delivery: 0, lines: [['gel-dlya-stirki-cvetnogo', 1]], method: 'sbp', daysAgo: 15, track: 'WB 7712 0087 2219', receivedDaysAgo: 9, events: ['paid', 'assembling', 'shipping', 'pvz', 'received'] });
 
-    const OLGA = { user: olga, company, kind: 'b2b', wholesale: true, name: 'Смирнова Ольга Петровна', phone: '79002223344', email: 'zakupki@chistydom.ru' };
+    const OLGA = { user: olga, company, kind: 'b2b', wholesale: true, name: 'Смирнова Ольга Петровна', phone: '79002223344', email: 'zakupki@palada.demo' };
     mk({ ...OLGA, id: 10421, status: 'received', type: 'ozon', address: 'пр. Ворошиловский, 12', delivery: 390, lines: [['gel-dlya-stirki-cvetnogo', 12], ['zhidkoe-mylo-5l', 8], ['gel-dlya-posudy-yabloko', 24]], method: 'card', daysAgo: 23, track: 'OZN-47710533-0102', receivedDaysAgo: 17, events: ['paid', 'assembling', 'shipping', 'pvz', 'received'] });
     mk({ ...OLGA, id: 10455, status: 'shipping', type: 'wb', address: 'г. Ростов-на-Дону, ул. Пушкинская, 140', delivery: 450, lines: [['gel-dlya-stirki-cvetnogo', 20], ['gel-dlya-stirki-chernogo', 12], ['sredstvo-dlya-vannyh', 24]], method: 'invoice', daysAgo: 9, track: 'WB 7712 0089 5530', events: ['paid', 'assembling', 'shipping'] });
     db.run(`insert into documents (order_id, kind, number) values (10455, 'invoice', '10455'), (10455, 'upd', '10455'), (10421, 'upd', '10421'), (10421, 'receipt', '10421')`);

@@ -21,7 +21,8 @@ export interface LegalDoc {
 
 const TBD = '[Текст раздела — предоставит юрист.]';
 
-export const DOCS: LegalDoc[] = [
+/** Документы собираются при каждом запросе — реквизиты берутся из актуальных настроек. */
+export const buildDocs = (): LegalDoc[] => [
   {
     slug: 'offer',
     title: 'Договор-оферта',
@@ -87,4 +88,4 @@ export const DOCS: LegalDoc[] = [
   },
 ];
 
-export const getDoc = (slug: string) => DOCS.find((d) => d.slug === slug);
+export const getDoc = (slug: string) => buildDocs().find((d) => d.slug === slug);

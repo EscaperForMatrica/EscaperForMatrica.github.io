@@ -1,0 +1,152 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+import { STATUS, type Order } from '../../lib/orders';
+import { rub, num, phoneInput, dateDots, dayMonth, shortDateTime } from '../../lib/format';
+import { config } from '../../lib/config';
+
+const sp = Astro.url.searchParams;
+const q = (sp.get('q') || '').trim();
+const f = sp.get('f') || 'all';
+const openId = Number(sp.get('id')) || 0;
+const PER = 20;
+const page = Math.max(1, Number(sp.get('page')) || 1);
+
+const where: string[] = [`u.role != 'admin'`];
+const params: any[] = [];
+if (q) {
+  const digits = q.replace(/\D/g, '');
+  where.push(`(u.email like ? or u.name like ? or u.name like ? ${digits.length >= 3 ? 'or u.phone like ?' : ''})`);
+  params.push(`%${q.toLowerCase()}%`, `%${q}%`, `%${q[0]?.toUpperCase()}${q.slice(1)}%`);
+  if (digits.length >= 3) params.push(`%${digits}%`);
+}
+if (f === 'retail') where.push('u.company_id is null');
+if (f === 'b2b') where.push('u.company_id is not null');
+if (f === 'buyers') where.push(`exists (select 1 from orders o where o.user_id = u.id and o.status not in ('pending','cancelled'))`);
+const cond = where.join(' and ');
+const STAT = `(select count(*) from orders o where o.user_id = u.id and o.status not in ('pending','cancelled')) as orders,
+  (select coalesce(sum(total), 0) from orders o where o.user_id = u.id and o.status not in ('pending','cancelled')) as spent,
+  (select max(created_at) from orders o where o.user_id = u.id) as last_order`;
+const total = db.value<number>(`select count(*) from users u where ${cond}`, ...params) || 0;
+const rows = db.all<any>(
+  `select u.*, c.name as company_name, ${STAT} from users u left join companies c on c.id = u.company_id where ${cond}
+   order by u.created_at desc, u.id desc limit ? offset ?`,
+  ...params, PER, (page - 1) * PER,
+);
+const counts = {
+  all: db.value<number>(`select count(*) from users where role != 'admin'`) || 0,
+  retail: db.value<number>(`select count(*) from users where role != 'admin' and company_id is null`) || 0,
+  b2b: db.value<number>(`select count(*) from users where role != 'admin' and company_id is not null`) || 0,
+};
+const link = (patch: Record<string, string | null>) => {
+  const u = new URLSearchParams(sp);
+  for (const [k, v] of Object.entries(patch)) v === null ? u.delete(k) : u.set(k, v);
+  if (!('page' in patch) && !('id' in patch)) u.delete('page');
+  const s = u.toString();
+  return '/admin/customers' + (s ? `?${s}` : '');
+};
+const open = openId ? db.get<any>(`select u.*, c.name as company_name, c.inn as company_inn, ${STAT} from users u left join companies c on c.id = u.company_id where u.id = ?`, openId) : undefined;
+const openOrders = open ? db.all<Order>(`select * from orders where user_id = ? order by created_at desc, id desc limit 50`, open.id) : [];
+const enforced = (email: string) => config.adminEmails.includes(email);
+---
+<Admin title="Клиенты" active="customers">
+  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Клиенты</h1><span class="muted">{counts.all}</span></div>
+  <div class="adm-top">
+    <form action="/admin/customers" method="get" style="position: relative; width: 320px; max-width: 100%;" role="search">
+      {f !== 'all' && <input type="hidden" name="f" value={f} />}
+      <i class="ic ic-search ic-18 muted" style="position: absolute; left: 12px; top: 11px;"></i><input class="pl-input" name="q" value={q} style="height: 40px; padding-left: 38px; font-size: 14px;" placeholder="Имя, почта или телефон" aria-label="Поиск клиента" />
+    </form>
+    <div class="chips">
+      <a class={`chip ${f === 'all' ? 'on' : ''}`} href={link({ f: null })}>Все</a>
+      <a class={`chip ${f === 'retail' ? 'on' : ''}`} href={link({ f: 'retail' })}>Покупатели <span class="n">{counts.retail}</span></a>
+      <a class={`chip ${f === 'b2b' ? 'on' : ''}`} href={link({ f: 'b2b' })}>Оптовые <span class="n">{counts.b2b}</span></a>
+      <a class={`chip ${f === 'buyers' ? 'on' : ''}`} href={link({ f: 'buyers' })}>С покупками</a>
+    </div>
+  </div>
+  <div class="tbl-box">
+    <table class="tbl">
+      <thead><tr><th>Клиент</th><th>Телефон</th><th>Тип</th><th class="num">Заказы</th><th class="num">Сумма покупок</th><th>Последний заказ</th><th>Регистрация</th></tr></thead>
+      <tbody>
+        {rows.map((u) => (
+          <tr class={`is-click ${u.id === openId ? 'sel' : ''}`} data-href={link({ id: String(u.id) })}>
+            <td class="nm"><a href={link({ id: String(u.id) })}><b style="font-weight: 600;">{u.name || 'Без имени'}</b></a><br /><span class="xs muted">{u.email}</span></td>
+            <td class="nw">{u.phone ? phoneInput(u.phone) : <span class="muted">—</span>}</td>
+            <td>{u.company_id ? <span class="pl-badge pl-badge--accent" style="height: 22px;"><i class="ic ic-store ic-16"></i>{u.company_name}</span> : <span class="pl-badge pl-badge--neutral" style="height: 22px;">Покупатель</span>}</td>
+            <td class="num">{u.orders || <span class="muted">0</span>}</td>
+            <td class="num">{u.spent ? rub(u.spent) : <span class="muted">—</span>}</td>
+            <td class="nw">{u.last_order ? dayMonth(u.last_order) : <span class="muted">—</span>}</td>
+            <td class="nw">{dateDots(u.created_at)}</td>
+          </tr>
+        ))}
+        {!rows.length && <tr><td colspan="7" class="muted" style="text-align: center; padding: 32px 16px;">Клиентов не найдено</td></tr>}
+      </tbody>
+    </table>
+  </div>
+  <div class="row between sm muted g16">
+    <span>{q ? `Найдено: ${total}` : `Всего: ${total}`}</span>
+    <span class="row g8">{total ? `${(page - 1) * PER + 1}–${Math.min(total, page * PER)} из ${total}` : ''}
+      {page > 1 && <a class="act" href={link({ page: String(page - 1) })} aria-label="Назад"><i class="ic ic-chev-l ic-18"></i></a>}
+      {page * PER < total && <a class="act" href={link({ page: String(page + 1) })} aria-label="Вперёд"><i class="ic ic-chev-r ic-18"></i></a>}
+    </span>
+  </div>
+
+  {open && (
+    <Fragment slot="after">
+      <a class="scrim" href={link({ id: null })} style="background: rgba(15,23,42,0.24);" aria-label="Закрыть"></a>
+      <aside class="drawer" aria-label={`Клиент ${open.name}`} data-drawer={open.id}>
+        <div class="row between"><div class="col"><h2 class="t-h3" style="font-size: 24px;">{open.name || 'Без имени'}</h2><span class="sm muted">Клиент с {dateDots(open.created_at)}</span></div><a class="pl-icon-btn" href={link({ id: null })} aria-label="Закрыть"><i class="ic ic-close"></i></a></div>
+        <div class="grid2" style="gap: 12px;">
+          <div class="kpi"><span class="sm muted">Заказы</span><b>{num(open.orders)}</b></div>
+          <div class="kpi"><span class="sm muted">Сумма покупок</span><b>{rub(open.spent)}</b></div>
+        </div>
+        <div class="col g8 box-line" style="padding: 16px;">
+          <div class="sum-row sm"><span class="muted">Email</span><a class="link" href={`mailto:${open.email}`}>{open.email}</a></div>
+          <div class="sum-row sm"><span class="muted">Телефон</span>{open.phone ? <a class="link" href={`tel:+${open.phone}`}>{phoneInput(open.phone)}</a> : <span class="muted">не указан</span>}</div>
+          {open.company_id && <div class="sum-row sm"><span class="muted">Компания</span><a class="link" href={`/admin/companies?id=${open.company_id}`}>{open.company_name} · ИНН {open.company_inn}</a></div>}
+          {open.position && <div class="sum-row sm"><span class="muted">Должность</span><span>{open.position}</span></div>}
+          <div class="sum-row sm"><span class="muted">Рассылка</span><span>{open.newsletter ? 'подписан' : 'нет'}</span></div>
+          <div class="sum-row sm"><span class="muted">Согласие на обработку ПДн</span><span>{open.pd_consent_at ? `дано ${dateDots(open.pd_consent_at)}` : 'отозвано'}</span></div>
+        </div>
+        <div class="col g8">
+          <span class="pl-field__label">Заказы · {openOrders.length}</span>
+          {openOrders.length ? openOrders.map((o) => (
+            <a class="row between g12 box-line" href={`/admin/orders?m=&id=${o.id}`} style="padding: 12px 14px;">
+              <span class="col"><b style="font-weight: 600;">№ {o.id}</b><span class="xs muted">{shortDateTime(o.created_at)} · {o.delivery_type === 'wb' ? 'WB' : 'Ozon'}</span></span>
+              <span class="row g12"><span class={`pl-badge ${STATUS[o.status].cls}`} style="height: 22px;"><i class={`ic ic-${STATUS[o.status].icon} ic-16`}></i>{STATUS[o.status].label}</span><b class="nw">{rub(o.total)}</b></span>
+            </a>
+          )) : <p class="sm muted">Заказов пока нет.</p>}
+        </div>
+        <div class="hr"></div>
+        <div class="col g8">
+          <span class="pl-field__label">Доступ</span>
+          {enforced(open.email)
+            ? <p class="sm muted">Администратор задан в настройках сервера (ADMIN_EMAILS).</p>
+            : <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" style="align-self: flex-start;" data-make-admin={open.id}><i class="ic ic-shield ic-18"></i>Сделать администратором</button>}
+          <span class="xs muted">Администратор входит в /admin по коду, который приходит на {open.email}.</span>
+        </div>
+      </aside>
+    </Fragment>
+  )}
+</Admin>
+<script>
+  import { api, toast } from '../../scripts/app';
+  document.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const row = t.closest<HTMLElement>('tr[data-href]');
+    if (row && !t.closest('a')) location.href = row.dataset.href!;
+    const mk = t.closest<HTMLElement>('[data-make-admin]');
+    if (mk) {
+      if (!confirm('Дать этому клиенту полный доступ к админке?')) return;
+      const r = await api('/api/admin/team', { action: 'grant', id: Number(mk.dataset.makeAdmin) });
+      if (!r.ok) return toast(r.error, 'error');
+      location.href = '/admin/team';
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.querySelector('[data-drawer]')) {
+      const u = new URL(location.href);
+      u.searchParams.delete('id');
+      location.href = u.toString();
+    }
+  });
+</script>

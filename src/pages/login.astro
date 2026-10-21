@@ -1,19 +1,18 @@
 ---
 import Shop from '../layouts/Shop.astro';
 import OtpStep from '../components/OtpStep.astro';
-import { phoneInput } from '../lib/format';
 
 const next = Astro.url.searchParams.get('next') || '';
 if (Astro.locals.user) return Astro.redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/account');
-const phone = Astro.url.searchParams.get('phone') || '';
+const email = Astro.url.searchParams.get('email') || '';
 ---
 <Shop title="Вход в личный кабинет" header="compact" tool="account" tab="account" noindex footer={false} fabs={false} mobileHeader={{ kind: 'title', title: 'Вход', back: '/' }}>
   <div class="auth" style="gap: 32px; align-items: flex-start; padding-top: 80px; min-height: 834px;">
     <div class="auth-card" data-form-card>
       <div class="seg"><span class="on">Вход</span><a href={`/register${next ? `?next=${encodeURIComponent(next)}` : ''}`}>Регистрация</a></div>
-      <div class="col g8"><h1 class="t-h3" style="font-size: 26px;">Вход в личный кабинет</h1><p class="sm muted">Пришлём код подтверждения по СМС. Пароль не нужен.</p></div>
+      <div class="col g8"><h1 class="t-h3" style="font-size: 26px;">Вход в личный кабинет</h1><p class="sm muted">Пришлём код подтверждения на почту. Пароль не нужен.</p></div>
       <form class="col g20" data-auth-form data-purpose="login" data-next={next} novalidate>
-        <div class="pl-field"><label class="pl-field__label" for="l-phone">Номер телефона</label><input class="pl-input" id="l-phone" name="phone" value={phone ? phoneInput(phone) : ''} type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (___) ___-__-__" data-phone data-req autofocus /><span class="pl-field__error" hidden data-err="phone"><i class="ic ic-alert ic-16"></i><span></span></span></div>
+        <div class="pl-field"><label class="pl-field__label" for="l-email">Email</label><input class="pl-input" id="l-email" name="email" value={email} type="email" inputmode="email" autocomplete="email" placeholder="name@mail.ru" data-req autofocus /><span class="pl-field__error" hidden data-err="email"><i class="ic ic-alert ic-16"></i><span></span></span></div>
         <button class="pl-btn pl-btn--primary pl-btn--block" type="submit">Получить код</button>
       </form>
       <p class="xs muted">Нажимая «Получить код», вы соглашаетесь с <a class="link" href="/legal/privacy">политикой конфиденциальности</a>.</p>

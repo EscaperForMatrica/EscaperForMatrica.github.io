@@ -1,0 +1,136 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+import { STATUS, DOC_LABEL, type Order } from '../../lib/orders';
+import { rub, num, phoneInput, dateDots, shortDateTime } from '../../lib/format';
+import { STATUS_LABEL } from '../../lib/inn';
+
+const sp = Astro.url.searchParams;
+const q = (sp.get('q') || '').trim();
+const openId = Number(sp.get('id')) || 0;
+const where: string[] = [];
+const params: any[] = [];
+if (q) {
+  where.push('(c.inn like ? or c.name like ? or c.name like ?)');
+  params.push(`%${q.replace(/\D/g, '') || q}%`, `%${q}%`, `%${q[0]?.toUpperCase()}${q.slice(1)}%`);
+}
+const STAT = `(select count(*) from orders o where o.company_id = c.id and o.status not in ('pending','cancelled')) as orders,
+  (select coalesce(sum(total), 0) from orders o where o.company_id = c.id and o.status not in ('pending','cancelled')) as spent,
+  (select count(*) from orders o where o.company_id = c.id and o.status = 'pending' and o.payment_method = 'invoice') as unpaid,
+  (select coalesce(sum(total), 0) from orders o where o.company_id = c.id and o.status = 'pending' and o.payment_method = 'invoice') as unpaid_sum,
+  (select name from users u where u.company_id = c.id order by u.id limit 1) as contact,
+  (select email from users u where u.company_id = c.id order by u.id limit 1) as contact_email`;
+const rows = db.all<any>(`select c.*, ${STAT} from companies c ${where.length ? 'where ' + where.join(' and ') : ''} order by c.created_at desc, c.id desc`, ...params);
+const link = (patch: Record<string, string | null>) => {
+  const u = new URLSearchParams(sp);
+  for (const [k, v] of Object.entries(patch)) v === null ? u.delete(k) : u.set(k, v);
+  const s = u.toString();
+  return '/admin/companies' + (s ? `?${s}` : '');
+};
+const open = openId ? db.get<any>(`select c.*, ${STAT} from companies c where c.id = ?`, openId) : undefined;
+const contacts = open ? db.all<any>('select * from users where company_id = ? order by id', open.id) : [];
+const orders = open ? db.all<Order>('select * from orders where company_id = ? order by created_at desc, id desc limit 50', open.id) : [];
+const docs = open ? db.all<any>('select d.* from documents d join orders o on o.id = d.order_id where o.company_id = ? order by d.id desc', open.id) : [];
+---
+<Admin title="Компании" active="companies">
+  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Компании</h1><span class="muted">{rows.length}</span></div>
+  <div class="adm-top">
+    <form action="/admin/companies" method="get" style="position: relative; width: 320px; max-width: 100%;" role="search">
+      <i class="ic ic-search ic-18 muted" style="position: absolute; left: 12px; top: 11px;"></i><input class="pl-input" name="q" value={q} style="height: 40px; padding-left: 38px; font-size: 14px;" placeholder="Название или ИНН" aria-label="Поиск компании" />
+    </form>
+  </div>
+  <div class="tbl-box">
+    <table class="tbl">
+      <thead><tr><th>Компания</th><th>Контактное лицо</th><th class="num">Заказы</th><th class="num">Оплачено</th><th>Счета к оплате</th><th>С нами с</th></tr></thead>
+      <tbody>
+        {rows.map((c) => (
+          <tr class={`is-click ${c.id === openId ? 'sel' : ''}`} data-href={link({ id: String(c.id) })}>
+            <td class="nm"><a href={link({ id: String(c.id) })}><b style="font-weight: 600;">{c.name}</b></a><br /><span class="xs muted">ИНН {c.inn}{c.kpp && ` · КПП ${c.kpp}`}</span></td>
+            <td>{c.contact || <span class="muted">—</span>}{c.contact_email && <><br /><span class="xs muted">{c.contact_email}</span></>}</td>
+            <td class="num">{c.orders}</td>
+            <td class="num">{c.spent ? rub(c.spent) : <span class="muted">—</span>}</td>
+            <td>{c.unpaid ? <span class="pl-badge pl-badge--neutral is-pending" style="height: 22px;"><i class="ic ic-clock ic-16"></i>{c.unpaid} на {rub(c.unpaid_sum)}</span> : <span class="muted">—</span>}</td>
+            <td class="nw">{dateDots(c.created_at)}</td>
+          </tr>
+        ))}
+        {!rows.length && <tr><td colspan="6" class="muted" style="text-align: center; padding: 32px 16px;">Компаний пока нет — они появятся после регистрации по ИНН</td></tr>}
+      </tbody>
+    </table>
+  </div>
+
+  {open && (
+    <Fragment slot="after">
+      <a class="scrim" href={link({ id: null })} style="background: rgba(15,23,42,0.24);" aria-label="Закрыть"></a>
+      <aside class="drawer" aria-label={open.name} data-drawer={open.id}>
+        <div class="row between"><div class="col"><h2 class="t-h3" style="font-size: 24px;">{open.name}</h2><span class="sm muted">ИНН {open.inn}{open.status && ` · ${STATUS_LABEL[open.status] || open.status}`}</span></div><a class="pl-icon-btn" href={link({ id: null })} aria-label="Закрыть"><i class="ic ic-close"></i></a></div>
+        <div class="grid2" style="gap: 12px;">
+          <div class="kpi"><span class="sm muted">Оплачено</span><b>{rub(open.spent)}</b></div>
+          <div class="kpi"><span class="sm muted">Счета к оплате</span><b>{open.unpaid ? rub(open.unpaid_sum) : '—'}</b></div>
+        </div>
+        <form class="col g12 box-line" style="padding: 16px;" data-company-form data-id={open.id}>
+          <span class="pl-field__label">Реквизиты</span>
+          <div class="pl-field"><label class="pl-field__label" for="c-name">Наименование</label><input class="pl-input" id="c-name" name="name" value={open.name} /></div>
+          <div class="grid2" style="gap: 12px;">
+            <div class="pl-field"><label class="pl-field__label" for="c-kpp">КПП</label><input class="pl-input" id="c-kpp" name="kpp" value={open.kpp} /></div>
+            <div class="pl-field"><label class="pl-field__label" for="c-ogrn">ОГРН</label><input class="pl-input" id="c-ogrn" name="ogrn" value={open.ogrn} /></div>
+          </div>
+          <div class="pl-field"><label class="pl-field__label" for="c-addr">Юридический адрес</label><input class="pl-input" id="c-addr" name="address" value={open.address} /></div>
+          <span class="pl-field__error" hidden data-err><i class="ic ic-alert ic-16"></i><span></span></span>
+          <button class="pl-btn pl-btn--primary pl-btn--sm" type="submit" style="align-self: flex-start;">Сохранить реквизиты</button>
+        </form>
+        <div class="col g8">
+          <span class="pl-field__label">Контактные лица</span>
+          {contacts.map((u) => (
+            <a class="row between g12 box-line" href={`/admin/customers?id=${u.id}`} style="padding: 12px 14px;">
+              <span class="col"><b style="font-weight: 600;">{u.name || 'Без имени'}</b><span class="xs muted">{u.email}{u.position && ` · ${u.position}`}</span></span>
+              <span class="sm nw">{u.phone ? phoneInput(u.phone) : ''}</span>
+            </a>
+          ))}
+        </div>
+        <div class="col g8">
+          <span class="pl-field__label">Заказы · {orders.length}</span>
+          {orders.length ? orders.map((o) => (
+            <a class="row between g12 box-line" href={`/admin/orders?m=&id=${o.id}`} style="padding: 12px 14px;">
+              <span class="col"><b style="font-weight: 600;">№ {o.id}</b><span class="xs muted">{shortDateTime(o.created_at)} · {o.payment_method === 'invoice' ? 'по счёту' : 'онлайн'}</span></span>
+              <span class="row g12"><span class={`pl-badge ${STATUS[o.status].cls}`} style="height: 22px;"><i class={`ic ic-${STATUS[o.status].icon} ic-16`}></i>{STATUS[o.status].label}</span><b class="nw">{rub(o.total)}</b></span>
+            </a>
+          )) : <p class="sm muted">Заказов пока нет.</p>}
+        </div>
+        {docs.length > 0 && (
+          <div class="col g8">
+            <span class="pl-field__label">Документы</span>
+            <div class="row g8" style="flex-wrap: wrap;">
+              {docs.map((d) => <a class="chip" href={d.file || (d.kind === 'invoice' ? `/b2b/invoice/${d.order_id}` : '#')} target="_blank"><i class="ic ic-doc ic-18"></i>{DOC_LABEL[d.kind] || d.kind} № {d.number}</a>)}
+            </div>
+          </div>
+        )}
+        <p class="xs muted">Всего заказов: {num(open.orders)} оплаченных{open.unpaid ? `, ${open.unpaid} ждут оплаты по счёту` : ''}.</p>
+      </aside>
+    </Fragment>
+  )}
+</Admin>
+<script>
+  import { api, toast } from '../../scripts/app';
+  document.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    const row = t.closest<HTMLElement>('tr[data-href]');
+    if (row && !t.closest('a')) location.href = row.dataset.href!;
+  });
+  document.querySelector<HTMLFormElement>('[data-company-form]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget as HTMLFormElement;
+    const r = await api('/api/admin/companies', { ...Object.fromEntries(new FormData(f).entries()), id: Number(f.dataset.id) });
+    const err = f.querySelector<HTMLElement>('[data-err]')!;
+    err.hidden = r.ok;
+    if (!r.ok) return (err.querySelector('span')!.textContent = r.error);
+    toast('Реквизиты сохранены');
+    setTimeout(() => location.reload(), 400);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.querySelector('[data-drawer]')) {
+      const u = new URL(location.href);
+      u.searchParams.delete('id');
+      location.href = u.toString();
+    }
+  });
+</script>

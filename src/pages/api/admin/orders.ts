@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { db } from '../../../lib/db';
 import { json, fail, body, str, int } from '../../../lib/http';
 import { getOrder, setStatus, setTrack, STATUS, type OrderStatus } from '../../../lib/orders';
+import { notifyTrack, notifyOrderPaid } from '../../../lib/notify';
 
 // Заказы в админке: status | track | doc
 export const POST: APIRoute = async ({ request }) => {
@@ -14,6 +15,7 @@ export const POST: APIRoute = async ({ request }) => {
     setTrack(o.id, track);
     // Трек указан у оплаченного/собираемого заказа — переводим в «Передан в доставку»
     if (track && ['paid', 'assembling'].includes(o.status)) setStatus(o.id, 'shipping');
+    if (track && track !== o.track) notifyTrack(o.id);
     return json({ ok: true });
   }
   if (b.action === 'status') {
@@ -21,6 +23,8 @@ export const POST: APIRoute = async ({ request }) => {
     if (!(status in STATUS)) return fail('Неизвестный статус');
     if (['shipping', 'pvz'].includes(status) && !o.track) return fail('Сначала укажите трек-номер — покупатель увидит его в кабинете');
     setStatus(o.id, status);
+    // Оплата по счёту подтверждена вручную — письмо покупателю и магазину
+    if (o.status === 'pending' && status !== 'cancelled') notifyOrderPaid(o.id);
     return json({ ok: true });
   }
   if (b.action === 'doc') {

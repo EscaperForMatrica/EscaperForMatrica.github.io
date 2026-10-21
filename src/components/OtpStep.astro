@@ -1,16 +1,16 @@
 ---
-// Шаг «Введите код» (общий для входа и регистраций).
+// Шаг «Введите код» из письма (общий для входа и регистраций).
 interface Props {
   width?: number;
 }
 const { width } = Astro.props;
 ---
 <div class="auth-card" data-otp-step hidden style={width ? `width: ${width}px;` : undefined}>
-  <button class="pl-btn pl-btn--text" type="button" style="align-self: flex-start; padding-left: 0;" data-otp-back><i class="ic ic-chev-l ic-20"></i>Изменить номер</button>
-  <div class="col g8"><h2 class="t-h3" style="font-size: 26px;">Введите код</h2><p class="sm muted">Отправили СМС на <span data-otp-phone></span></p></div>
-  <div class="dev-note" hidden data-otp-dev><i class="ic ic-info ic-18"></i><span>Тестовый режим без СМС: код <b data-otp-dev-code></b></span></div>
+  <button class="pl-btn pl-btn--text" type="button" style="align-self: flex-start; padding-left: 0;" data-otp-back><i class="ic ic-chev-l ic-20"></i>Изменить почту</button>
+  <div class="col g8"><h2 class="t-h3" style="font-size: 26px;">Введите код</h2><p class="sm muted">Отправили письмо с кодом на <b data-otp-email style="font-weight: 600; color: var(--ink);"></b>. Не пришло — проверьте «Спам».</p></div>
+  <div class="dev-note" hidden data-otp-dev><i class="ic ic-info ic-18"></i><span>Демо-режим, письма не отправляются: код <b data-otp-dev-code></b></span></div>
   <form class="col g8" data-otp-form novalidate>
-    <div class="otp spread" role="group" aria-label="Код из СМС">
+    <div class="otp spread" role="group" aria-label="Код из письма">
       <input inputmode="numeric" autocomplete="one-time-code" maxlength="4" aria-label="Цифра 1" data-otp />
       <input inputmode="numeric" maxlength="1" aria-label="Цифра 2" data-otp />
       <input inputmode="numeric" maxlength="1" aria-label="Цифра 3" data-otp />

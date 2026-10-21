@@ -1,3 +1,176 @@
 ---
-return Astro.redirect('/admin/products');
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+import { PERIODS, summary, revenueSeries, attention, topProducts, delta, niceMax, compact } from '../../lib/stats';
+import { STATUS, type Order } from '../../lib/orders';
+import { rub, num, shortDateTime, shortName } from '../../lib/format';
+
+const pKey = PERIODS[Astro.url.searchParams.get('p') || ''] ? (Astro.url.searchParams.get('p') as string) : '30';
+const period = PERIODS[pKey];
+const s = summary(period.days);
+const series = revenueSeries(period.days);
+const att = attention();
+const top = topProducts(period.days);
+const recent = db.all<Order & { company_name?: string }>(
+  `select o.*, c.name as company_name from orders o left join companies c on c.id = o.company_id
+   where not (o.status = 'pending' and o.payment_method != 'invoice') order by o.created_at desc, o.id desc limit 6`,
+);
+const max = niceMax(Math.max(0, ...series.map((b) => b.revenue)));
+const peak = series.reduce((a, b) => (b.revenue > a.revenue ? b : a), series[0]);
+const labelEvery = series.length > 20 ? 5 : 1;
+const kpis = [
+  { label: 'Выручка', value: rub(s.revenue), d: delta(s.revenue, s.prev.revenue) },
+  { label: 'Оплаченные заказы', value: num(s.orders), d: delta(s.orders, s.prev.orders) },
+  { label: 'Средний чек', value: rub(s.avg), d: delta(s.avg, s.prev.avg) },
+  { label: 'Новые клиенты', value: num(s.customers), d: delta(s.customers, s.prev.customers) },
+];
+const todo = [
+  { n: att.toAssemble, label: 'Оплачены — ждут сборки', href: '/admin/orders?s=paid&m=', icon: 'box' },
+  { n: att.noTrack, label: 'Без трек-номера', href: '/admin/orders?m=', icon: 'truck' },
+  { n: att.invoices, label: 'Счета ждут оплаты', href: '/admin/orders?s=pending&m=', icon: 'doc' },
+  { n: att.pvz, label: 'Ждут в ПВЗ', href: '/admin/orders?s=pvz&m=', icon: 'store' },
+  { n: att.lowStock, label: 'Заканчиваются товары', href: '/admin/products?f=low', icon: 'alert' },
+];
 ---
+<Admin title="Обзор" active="dashboard">
+  <div class="adm-top">
+    <h1 class="t-h3" style="font-size: 26px;">Обзор</h1>
+    <span class="grow"></span>
+    <div class="seg" style="width: 300px;" role="tablist" aria-label="Период">
+      {Object.entries(PERIODS).map(([k, v]) => <a class={k === pKey ? 'on' : ''} href={`/admin?p=${k}`} aria-current={k === pKey ? 'page' : undefined}>{v.label}</a>)}
+    </div>
+  </div>
+
+  <div class="grid4" style="gap: 16px;">
+    {kpis.map((k) => (
+      <div class="kpi">
+        <span class="sm muted">{k.label}</span>
+        <b>{k.value}</b>
+        <span class="xs" style={`color: ${k.d === null || k.d === 0 ? 'var(--ink-muted)' : k.d > 0 ? 'var(--accent-ink)' : 'var(--warm-ink)'};`}>
+          {k.d === null ? 'нет данных за прошлый период' : `${k.d > 0 ? '+' : k.d < 0 ? '−' : ''}${Math.abs(k.d)}% к прошлым ${period.label}`}
+        </span>
+      </div>
+    ))}
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+    <section class="box-line col g16" style="flex: 999 1 560px; min-width: 0;">
+      <div class="row between g16" style="flex-wrap: wrap;">
+        <div class="col"><h2 class="t-h4">Выручка по {period.days > 30 ? 'неделям' : 'дням'}</h2><span class="sm muted">Оплаченные заказы, ₽ · последние {period.label}</span></div>
+        <button class="pl-btn pl-btn--text" type="button" style="padding: 0;" data-table-toggle aria-expanded="false">Таблицей</button>
+      </div>
+      <div class="chart" data-chart>
+        <div class="chart-grid" aria-hidden="true">
+          {[max, max / 2, 0].map((t) => <div class="chart-line"><span>{compact(t)}</span></div>)}
+        </div>
+        <div class="chart-bars" role="img" aria-label={`Выручка по ${period.days > 30 ? 'неделям' : 'дням'}, максимум ${rub(peak.revenue)} — ${peak.title}`}>
+          {series.map((b, i) => (
+            <button class="chart-col" type="button" data-tip={`${b.title} · ${rub(b.revenue)} · ${b.orders} ${b.orders === 1 ? 'заказ' : b.orders > 1 && b.orders < 5 ? 'заказа' : 'заказов'}`} aria-label={`${b.title}: ${rub(b.revenue)}`}>
+              {b === peak && b.revenue > 0 && <span class="chart-peak">{compact(b.revenue)}</span>}
+              <span class="chart-bar" style={`height: ${(b.revenue / max) * 100}%;`}></span>
+              <span class="chart-x">{i % labelEvery === 0 || i === series.length - 1 ? b.label : ''}</span>
+            </button>
+          ))}
+        </div>
+        <div class="chart-tip" role="status" hidden data-tip-box></div>
+      </div>
+      <div class="tbl-box" hidden data-table>
+        <table class="tbl">
+          <thead><tr><th>{period.days > 30 ? 'Неделя' : 'День'}</th><th class="num">Заказы</th><th class="num">Выручка</th></tr></thead>
+          <tbody>{[...series].reverse().map((b) => <tr><td>{b.title}</td><td class="num">{b.orders}</td><td class="num">{rub(b.revenue)}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="box-line col g8" style="flex: 1 1 300px;">
+      <h2 class="t-h4" style="margin-bottom: 4px;">Требуют внимания</h2>
+      {todo.map((t) => (
+        <a class="side-a" href={t.href} style={`height: 44px; padding: 0 12px;${t.n ? '' : ' color: var(--ink-muted);'}`}>
+          <i class={`ic ic-${t.icon} ic-20`}></i>{t.label}
+          <span class={t.n ? 'pl-badge pl-badge--accent' : 'n'} style={t.n ? 'margin-left: auto; height: 22px; padding: 0 8px;' : undefined}>{t.n}</span>
+        </a>
+      ))}
+    </section>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+    <section class="col g12" style="flex: 1 1 420px; min-width: 0;">
+      <div class="row between"><h2 class="t-h4">Последние заказы</h2><a class="sm link" href="/admin/orders?m=">Все заказы</a></div>
+      <div class="tbl-box">
+        <table class="tbl">
+          <thead><tr><th>№</th><th>Покупатель</th><th class="num">Сумма</th><th>Статус</th></tr></thead>
+          <tbody>
+            {recent.map((o) => (
+              <tr class="is-click" data-href={`/admin/orders?m=&id=${o.id}`}>
+                <td><a href={`/admin/orders?m=&id=${o.id}`} style="font-weight: 600;">{o.id}</a><br /><span class="xs muted">{shortDateTime(o.created_at)}</span></td>
+                <td>{o.company_name || shortName(o.name) || '—'}</td>
+                <td class="num">{rub(o.total)}</td>
+                <td><span class={`pl-badge ${STATUS[o.status].cls}`}><i class={`ic ic-${STATUS[o.status].icon} ic-16`}></i>{STATUS[o.status].label}</span></td>
+              </tr>
+            ))}
+            {!recent.length && <tr><td colspan="4" class="muted" style="text-align: center; padding: 24px;">Заказов пока нет</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="col g12" style="flex: 1 1 360px; min-width: 0;">
+      <div class="row between"><h2 class="t-h4">Лидеры продаж · {period.label}</h2><a class="sm link" href="/admin/products">Товары</a></div>
+      <div class="tbl-box">
+        <table class="tbl">
+          <thead><tr><th>Товар</th><th class="num">Шт.</th><th class="num">Выручка</th></tr></thead>
+          <tbody>
+            {top.map((t) => <tr><td>{t.product_id ? <a href={`/admin/products/${t.product_id}`}>{t.name}</a> : t.name}<br /><span class="xs muted">{t.variant}</span></td><td class="num">{num(t.qty)}</td><td class="num">{rub(t.revenue)}</td></tr>)}
+            {!top.length && <tr><td colspan="3" class="muted" style="text-align: center; padding: 24px;">Продаж за период нет</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</Admin>
+
+<style is:global>
+  .chart { position: relative; height: 260px; }
+  .chart-grid { position: absolute; inset: 20px 0 24px 44px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+  .chart-line { border-top: 1px solid var(--line); position: relative; height: 0; }
+  .chart-line span { position: absolute; right: calc(100% + 8px); top: -8px; font-size: 12px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .chart-bars { position: absolute; inset: 20px 0 0 44px; display: flex; align-items: stretch; }
+  .chart-col { flex: 1 1 0; min-width: 0; border: 0; background: none; padding: 0; position: relative; cursor: default; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 24px; }
+  .chart-col:hover .chart-bar, .chart-col:focus-visible .chart-bar { background: var(--accent-ink); }
+  .chart-col:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+  .chart-bar { width: min(24px, 70%); background: var(--accent); border-radius: 4px 4px 0 0; min-height: 0; transition: background-color .15s; }
+  .chart-x { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--ink-muted); line-height: 20px; white-space: nowrap; }
+  .chart-peak { font-size: 12px; font-weight: 600; color: var(--ink-strong); margin-bottom: 4px; white-space: nowrap; }
+  .chart-tip { position: absolute; z-index: 2; background: var(--ink-strong); color: #fff; font-size: 13px; padding: 6px 10px; border-radius: 6px; pointer-events: none; white-space: nowrap; transform: translate(-50%, -100%); box-shadow: var(--shadow-float); }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-chart]').forEach((chart) => {
+    const tip = chart.querySelector<HTMLElement>('[data-tip-box]')!;
+    const show = (col: HTMLElement) => {
+      const bar = col.querySelector<HTMLElement>('.chart-bar')!;
+      const cr = chart.getBoundingClientRect();
+      const br = bar.getBoundingClientRect();
+      tip.textContent = col.dataset.tip || '';
+      tip.hidden = false;
+      tip.style.left = `${br.left + br.width / 2 - cr.left}px`;
+      tip.style.top = `${Math.min(br.top, cr.bottom - 30) - cr.top - 8}px`;
+    };
+    chart.querySelectorAll<HTMLElement>('.chart-col').forEach((col) => {
+      col.addEventListener('mouseenter', () => show(col));
+      col.addEventListener('focus', () => show(col));
+      col.addEventListener('mouseleave', () => (tip.hidden = true));
+      col.addEventListener('blur', () => (tip.hidden = true));
+    });
+  });
+  document.querySelector('[data-table-toggle]')?.addEventListener('click', (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    const t = document.querySelector<HTMLElement>('[data-table]')!;
+    t.hidden = !t.hidden;
+    b.setAttribute('aria-expanded', String(!t.hidden));
+    b.textContent = t.hidden ? 'Таблицей' : 'Скрыть таблицу';
+  });
+  document.addEventListener('click', (e) => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>('tr[data-href]');
+    if (row && !(e.target as HTMLElement).closest('a')) location.href = row.dataset.href!;
+  });
+</script>

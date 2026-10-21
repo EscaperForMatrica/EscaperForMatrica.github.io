@@ -5,6 +5,7 @@ import { getCart } from '../../../lib/cart';
 import { normPhone, isEmail } from '../../../lib/format';
 import { getPoint, findCity, deliveryCost, deliveryEta } from '../../../lib/delivery';
 import { upsertPendingOrder, placeInvoiceOrder } from '../../../lib/orders';
+import { notifyInvoice } from '../../../lib/notify';
 
 // Оптовое оформление: счёт на юрлицо (заказ ждёт оплаты) или онлайн-оплата картой/СБП.
 export const POST: APIRoute = async ({ request, locals }) => {
@@ -41,6 +42,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   if (invoice) {
     placeInvoiceOrder(orderId);
+    notifyInvoice(orderId);
     return json({ ok: true, redirect: `/b2b/account?invoice=${orderId}` });
   }
   return json({ ok: true, orderId, total: cart.itemsTotal + cost, count: cart.count });

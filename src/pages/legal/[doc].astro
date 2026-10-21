@@ -1,11 +1,11 @@
 ---
 import Shop from '../../layouts/Shop.astro';
-import { DOCS, getDoc } from '../../lib/legal';
+import { buildDocs, getDoc } from '../../lib/legal';
 import { shop } from '../../lib/config';
 
 const doc = getDoc(Astro.params.doc || '');
 if (!doc) return Astro.rewrite('/404');
-const navDocs = DOCS.filter((d) => d.slug !== 'offer-b2b' || doc.slug === 'offer-b2b');
+const navDocs = buildDocs().filter((d) => d.slug !== 'offer-b2b' || doc.slug === 'offer-b2b');
 ---
 <Shop title={doc.title} mobileHeader={{ kind: 'title', title: 'Документы', back: '/' }} mobileFooter={false}>
   <main class="wrap">
@@ -41,7 +41,7 @@ const navDocs = DOCS.filter((d) => d.slug !== 'offer-b2b' || doc.slug === 'offer
                 <div class="sum-row"><span class="muted">ИНН</span><span>{shop.inn}</span></div>
                 <div class="sum-row"><span class="muted">ОГРН</span><span>{shop.ogrn}</span></div>
                 <div class="sum-row"><span class="muted">Телефон</span><span>{shop.supportPhone}</span></div>
-                <div class="sum-row"><span class="muted">Юридический адрес</span><span>[адрес]</span></div>
+                <div class="sum-row"><span class="muted">Юридический адрес</span><span>{shop.address || '[адрес]'}</span></div>
               </div>
             )}
           </>

@@ -95,9 +95,9 @@ export function signIn(cookies: AstroCookies, locals: App.Locals, userId: number
       db.run('update orders set user_id = ? where session_id = ? and user_id is null', userId, oldSid);
       db.run('delete from sessions where id = ?', oldSid);
     }
-    // Гостевые заказы с этим номером — в кабинет
-    const phone = db.value<string>('select phone from users where id = ?', userId);
-    if (phone) db.run('update orders set user_id = ? where phone = ? and user_id is null', userId, phone);
+    // Гостевые заказы с этой почтой — в кабинет
+    const email = db.value<string>('select email from users where id = ?', userId);
+    if (email) db.run('update orders set user_id = ? where lower(email) = ? and user_id is null', userId, email);
   });
   setCookie(cookies, sid);
   locals.sid = sid;

@@ -17,11 +17,13 @@
   },
   "dependencies": {
     "@astrojs/node": "^11.1.8",
-    "astro": "^7.4.0"
+    "astro": "^7.4.0",
+    "nodemailer": "^7.0.13"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
     "buffer": "^6.0.3",
     "esbuild": "^0.28.2",
     "sql.js": "^1.15.0",

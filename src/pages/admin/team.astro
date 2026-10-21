@@ -1,0 +1,57 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+import { config } from '../../lib/config';
+import { dateDots } from '../../lib/format';
+
+const admins = db.all<any>(`select * from users where role = 'admin' order by created_at, id`);
+const meId = Astro.locals.user?.id;
+---
+<Admin title="Администраторы" active="team">
+  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Администраторы</h1><span class="muted">{admins.length}</span></div>
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+    <div class="tbl-box" style="flex: 999 1 520px;">
+      <table class="tbl">
+        <thead><tr><th>Сотрудник</th><th>Добавлен</th><th></th></tr></thead>
+        <tbody>
+          {admins.map((a) => (
+            <tr>
+              <td><b style="font-weight: 600;">{a.name || 'Администратор'}</b>{a.id === meId && <span class="pl-badge pl-badge--accent" style="height: 20px; margin-left: 8px; font-size: 11px;">это вы</span>}<br /><span class="xs muted">{a.email}</span></td>
+              <td class="nw">{dateDots(a.created_at)}</td>
+              <td class="num">{config.adminEmails.includes(a.email)
+                ? <span class="xs muted">задан на сервере</span>
+                : a.id !== meId && <button class="pl-btn pl-btn--text" type="button" style="color: var(--error); min-height: 0;" data-revoke={a.id}>Снять права</button>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <form class="box-line col g16" style="flex: 1 1 300px; max-width: 400px;" data-add-admin novalidate>
+      <h2 class="t-h4">Добавить администратора</h2>
+      <div class="pl-field"><label class="pl-field__label" for="a-email">Email</label><input class="pl-input" id="a-email" name="email" type="email" placeholder="manager@palada.su" /></div>
+      <div class="pl-field"><label class="pl-field__label" for="a-name">Имя <i>(необязательно)</i></label><input class="pl-input" id="a-name" name="name" placeholder="Например, Ольга — менеджер" /></div>
+      <span class="pl-field__error" hidden data-err><i class="ic ic-alert ic-16"></i><span></span></span>
+      <button class="pl-btn pl-btn--primary pl-btn--block" type="submit"><i class="ic ic-plus ic-18"></i>Добавить</button>
+      <div class="pl-note"><i class="ic ic-info"></i><span>Пароль не нужен: сотрудник открывает <b>/login</b>, вводит эту почту и код из письма — и попадает в админку. У администратора полный доступ: товары, заказы, клиенты и настройки.</span></div>
+    </form>
+  </div>
+</Admin>
+<script>
+  import { api, toast } from '../../scripts/app';
+  document.addEventListener('click', async (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-revoke]');
+    if (!b) return;
+    if (!confirm('Снять права администратора?')) return;
+    const r = await api('/api/admin/team', { action: 'revoke', id: Number(b.dataset.revoke) });
+    r.ok ? location.reload() : toast(r.error, 'error');
+  });
+  document.querySelector<HTMLFormElement>('[data-add-admin]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget as HTMLFormElement;
+    const r = await api('/api/admin/team', { action: 'add', ...Object.fromEntries(new FormData(f).entries()) });
+    const err = f.querySelector<HTMLElement>('[data-err]')!;
+    err.hidden = r.ok;
+    if (!r.ok) return (err.querySelector('span')!.textContent = r.error);
+    location.reload();
+  });
+</script>

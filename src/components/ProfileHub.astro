@@ -1,6 +1,6 @@
 ---
 // Профиль: десктоп — блоки «Личные данные / Рассылка / Согласия», мобайл — экран кабинета из макета.
-import { displayName, phonePretty, phoneInput, dateDots } from '../lib/format';
+import { displayName, phoneInput, dateDots } from '../lib/format';
 import { orderCounts } from '../lib/orders';
 import { favCount } from '../lib/favorites';
 
@@ -19,10 +19,10 @@ const saved = Astro.url.searchParams.get('saved');
       <h2 class="t-h3">Личные данные</h2>
       <div class="pl-field"><label class="pl-field__label" for="p-name">ФИО</label><input class="pl-input" id="p-name" name="name" value={u.name} placeholder="Фамилия Имя Отчество" autocomplete="name" /><span class="pl-field__error" hidden data-err="name"><i class="ic ic-alert ic-16"></i><span></span></span></div>
       <div class="grid2" style="gap: 20px 24px;">
-        <div class="pl-field"><label class="pl-field__label" for="p-email">Email</label><input class="pl-input" id="p-email" name="email" type="email" value={u.email} placeholder="name@mail.ru" autocomplete="email" /><span class="pl-field__hint">Для чеков и статусов заказов</span><span class="pl-field__error" hidden data-err="email"><i class="ic ic-alert ic-16"></i><span></span></span></div>
-        <div class="pl-field"><label class="pl-field__label">Телефон</label><input class="pl-input is-disabled" value={phoneInput(u.phone)} disabled /><span class="pl-field__hint">Номер для входа. <button class="link" type="button" data-change-phone>Сменить</button> — по коду из СМС</span></div>
+        <div class="pl-field"><label class="pl-field__label">Email</label><input class="pl-input is-disabled" value={u.email} disabled /><span class="pl-field__hint">Почта для входа и чеков. <button class="link" type="button" data-change-email>Сменить</button> — по коду из письма</span></div>
+        <div class="pl-field"><label class="pl-field__label" for="p-phone">Телефон</label><input class="pl-input" id="p-phone" name="phone" type="tel" value={u.phone ? phoneInput(u.phone) : ''} placeholder="+7 (___) ___-__-__" autocomplete="tel" data-phone /><span class="pl-field__hint">Для связи по заказам</span><span class="pl-field__error" hidden data-err="phone"><i class="ic ic-alert ic-16"></i><span></span></span></div>
       </div>
-      <div class="row g12"><button class="pl-btn pl-btn--primary" type="submit">Сохранить</button><span class="row g8 sm save" hidden={saved !== 'phone'} data-saved><i class="ic ic-check ic-18"></i><span>{saved === 'phone' ? 'Номер телефона изменён' : 'Изменения сохранены'}</span></span></div>
+      <div class="row g12"><button class="pl-btn pl-btn--primary" type="submit">Сохранить</button><span class="row g8 sm save" hidden={saved !== 'email'} data-saved><i class="ic ic-check ic-18"></i><span>{saved === 'email' ? 'Почта изменена' : 'Изменения сохранены'}</span></span></div>
     </form>
     <section class="box-line col g16" style="padding: 32px;">
       <h2 class="t-h3">Рассылка</h2>
@@ -38,7 +38,7 @@ const saved = Astro.url.searchParams.get('saved');
 )}
 
 <div class="col g12 m-only profile-m">
-  <div class="col g4" style="padding: 4px 4px 8px;"><h1 class="m-h2" style="font-size: 26px;">{displayName(u.name) || 'Личный кабинет'}</h1><span class="sm muted">{phonePretty(u.phone)}</span></div>
+  <div class="col g4" style="padding: 4px 4px 8px;"><h1 class="m-h2" style="font-size: 26px;">{displayName(u.name) || 'Личный кабинет'}</h1><span class="sm muted">{u.email}</span></div>
   <div class="box" style="padding: 4px 0;">
     <a class="side-a" href="/account/orders"><i class="ic ic-box ic-20"></i>Мои заказы{counts.all > 0 && <span class="n">{counts.all}</span>}<i class="ic ic-chev-r ic-18 muted" style={counts.all > 0 ? undefined : 'margin-left: auto;'}></i></a>
     <a class="side-a" href="/favorites"><i class="ic ic-heart ic-20"></i>Избранное{favs > 0 && <span class="n">{favs}</span>}<i class="ic ic-chev-r ic-18 muted" style={favs > 0 ? undefined : 'margin-left: auto;'}></i></a>
@@ -47,25 +47,25 @@ const saved = Astro.url.searchParams.get('saved');
   <form class="box col g16" style="padding: 20px;" data-profile-form novalidate>
     <h2 class="t-h3">Профиль</h2>
     <div class="pl-field"><label class="pl-field__label" for="pm-name">ФИО</label><input class="pl-input" id="pm-name" name="name" value={u.name} placeholder="Фамилия Имя Отчество" autocomplete="name" /><span class="pl-field__error" hidden data-err="name"><i class="ic ic-alert ic-16"></i><span></span></span></div>
-    <div class="pl-field"><label class="pl-field__label" for="pm-email">Email</label><input class="pl-input" id="pm-email" name="email" type="email" value={u.email} placeholder="name@mail.ru" autocomplete="email" /><span class="pl-field__error" hidden data-err="email"><i class="ic ic-alert ic-16"></i><span></span></span></div>
-    <div class="pl-field"><label class="pl-field__label">Телефон</label><input class="pl-input is-disabled" value={phoneInput(u.phone)} disabled /><span class="pl-field__hint">Номер для входа. <button class="link" type="button" data-change-phone>Сменить</button></span></div>
+    <div class="pl-field"><label class="pl-field__label">Email</label><input class="pl-input is-disabled" value={u.email} disabled /><span class="pl-field__hint">Почта для входа. <button class="link" type="button" data-change-email>Сменить</button></span></div>
+    <div class="pl-field"><label class="pl-field__label" for="pm-phone">Телефон</label><input class="pl-input" id="pm-phone" name="phone" type="tel" value={u.phone ? phoneInput(u.phone) : ''} placeholder="+7 (___) ___-__-__" autocomplete="tel" data-phone /><span class="pl-field__error" hidden data-err="phone"><i class="ic ic-alert ic-16"></i><span></span></span></div>
     <button class="pl-btn pl-btn--primary pl-btn--block" type="submit">Сохранить</button>
-    <span class="row g8 sm save" hidden={saved !== 'phone'} data-saved><i class="ic ic-check ic-18"></i><span>{saved === 'phone' ? 'Номер телефона изменён' : 'Изменения сохранены'}</span></span>
+    <span class="row g8 sm save" hidden={saved !== 'email'} data-saved><i class="ic ic-check ic-18"></i><span>{saved === 'email' ? 'Почта изменена' : 'Изменения сохранены'}</span></span>
   </form>
   <div class="box row between g16" style="padding: 20px;"><div class="col g4"><b style="font-weight: 600;">Новости и акции</b><span class="xs muted">Скидки и новинки на почту</span></div><button class={`pl-toggle ${u.newsletter ? 'is-on' : ''}`} type="button" role="switch" aria-checked={u.newsletter ? 'true' : 'false'} aria-label="Новости и акции" data-newsletter><span class="pl-toggle__track"></span></button></div>
   <form method="post" action="/api/auth/logout"><button class="pl-btn pl-btn--text" type="submit" style="align-self: flex-start; color: var(--ink-muted);"><i class="ic ic-logout ic-20"></i>Выйти</button></form>
 </div>
 
-<div class="modal" data-phone-modal role="dialog" aria-modal="true" aria-labelledby="ph-title">
+<div class="modal" data-email-modal role="dialog" aria-modal="true" aria-labelledby="ph-title">
   <div class="scrim" data-modal-close></div>
   <div class="modal-box">
-    <div class="row between"><h2 class="t-h3" id="ph-title" style="font-size: 24px;">Новый номер</h2><button class="pl-icon-btn" type="button" aria-label="Закрыть" data-modal-close><i class="ic ic-close"></i></button></div>
+    <div class="row between"><h2 class="t-h3" id="ph-title" style="font-size: 24px;">Новая почта</h2><button class="pl-icon-btn" type="button" aria-label="Закрыть" data-modal-close><i class="ic ic-close"></i></button></div>
     <div class="col g16" data-ph-step="1">
-      <div class="pl-field"><label class="pl-field__label" for="ph-new">Номер телефона</label><input class="pl-input" id="ph-new" type="tel" inputmode="tel" placeholder="+7 (___) ___-__-__" data-phone /><span class="pl-field__hint">Пришлём код подтверждения на новый номер</span></div>
+      <div class="pl-field"><label class="pl-field__label" for="ph-new">Email</label><input class="pl-input" id="ph-new" type="email" inputmode="email" placeholder="name@mail.ru" autocomplete="email" /><span class="pl-field__hint">Пришлём код подтверждения на новый адрес</span></div>
       <button class="pl-btn pl-btn--primary pl-btn--block" type="button" data-ph-send>Получить код</button>
     </div>
     <div class="col g16" data-ph-step="2" hidden>
-      <div class="pl-field"><label class="pl-field__label" for="ph-code">Код из СМС</label><input class="pl-input" id="ph-code" inputmode="numeric" maxlength="4" autocomplete="one-time-code" style="letter-spacing: .3em; font-size: 20px;" /></div>
+      <div class="pl-field"><label class="pl-field__label" for="ph-code">Код из письма</label><input class="pl-input" id="ph-code" inputmode="numeric" maxlength="4" autocomplete="one-time-code" style="letter-spacing: .3em; font-size: 20px;" /></div>
       <div class="dev-note" hidden data-ph-dev></div>
       <button class="pl-btn pl-btn--primary pl-btn--block" type="button" data-ph-verify>Подтвердить</button>
     </div>
@@ -124,10 +124,10 @@ const saved = Astro.url.searchParams.get('saved');
       await api('/api/profile', { action: 'revoke-pd' });
       location.reload();
     }
-    if (t.closest('[data-change-phone]')) openModal(document.querySelector('[data-phone-modal]'));
+    if (t.closest('[data-change-email]')) openModal(document.querySelector('[data-email-modal]'));
   });
 
-  const m = document.querySelector<HTMLElement>('[data-phone-modal]');
+  const m = document.querySelector<HTMLElement>('[data-email-modal]');
   if (m) {
     const err = m.querySelector<HTMLElement>('[data-ph-err]')!;
     const showErr = (s?: string) => {
@@ -135,21 +135,21 @@ const saved = Astro.url.searchParams.get('saved');
       if (s) err.querySelector('span')!.textContent = s;
     };
     m.querySelector('[data-ph-send]')!.addEventListener('click', async () => {
-      const phone = m.querySelector<HTMLInputElement>('#ph-new')!.value;
-      const r = await api('/api/auth/request-code', { phone, purpose: 'change-phone' });
+      const email = m.querySelector<HTMLInputElement>('#ph-new')!.value;
+      const r = await api('/api/auth/request-code', { email, purpose: 'change-email' });
       if (!r.ok) return showErr(r.error);
       showErr();
       m.querySelector<HTMLElement>('[data-ph-step="1"]')!.hidden = true;
       m.querySelector<HTMLElement>('[data-ph-step="2"]')!.hidden = false;
       const dev = m.querySelector<HTMLElement>('[data-ph-dev]')!;
       dev.hidden = !r.devCode;
-      if (r.devCode) dev.textContent = `Тестовый режим без СМС: код ${r.devCode}`;
+      if (r.devCode) dev.textContent = `Демо-режим, письма не отправляются: код ${r.devCode}`;
       m.querySelector<HTMLInputElement>('#ph-code')!.focus();
     });
     m.querySelector('[data-ph-verify]')!.addEventListener('click', async () => {
-      const phone = m.querySelector<HTMLInputElement>('#ph-new')!.value;
+      const email = m.querySelector<HTMLInputElement>('#ph-new')!.value;
       const code = m.querySelector<HTMLInputElement>('#ph-code')!.value;
-      const r = await api('/api/auth/verify', { phone, code });
+      const r = await api('/api/auth/verify', { email, code });
       if (!r.ok) return showErr(r.error);
       location.href = r.redirect || '/account/profile';
     });

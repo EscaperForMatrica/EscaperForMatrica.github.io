@@ -1,0 +1,76 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+
+const cats = db.all<any>(`select c.*, (select count(*) from products p where p.category_id = c.id) as total,
+  (select count(*) from products p where p.category_id = c.id and p.visible = 1 and p.price is not null) as visible
+  from categories c order by c.sort, c.id`);
+---
+<Admin title="Категории" active="categories">
+  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Категории</h1><span class="muted">{cats.length}</span></div>
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+    <div class="tbl-box" style="flex: 999 1 520px;">
+      <table class="tbl">
+        <thead><tr><th style="width: 72px;">Порядок</th><th>Название</th><th class="num">Товаров</th><th class="num">На сайте</th><th></th></tr></thead>
+        <tbody>
+          {cats.map((c, i) => (
+            <tr data-cat={c.id}>
+              <td><span class="row g4"><button class="act" type="button" aria-label="Выше" data-move="-1" disabled={i === 0} style={i === 0 ? 'opacity: .3;' : undefined}><i class="ic ic-chev-l ic-18" style="transform: rotate(90deg);"></i></button><button class="act" type="button" aria-label="Ниже" data-move="1" disabled={i === cats.length - 1} style={i === cats.length - 1 ? 'opacity: .3;' : undefined}><i class="ic ic-chev-r ic-18" style="transform: rotate(90deg);"></i></button></span></td>
+              <td><form class="row g8" data-rename><input class="pl-input" name="name" value={c.name} style="height: 40px; font-size: 14px; max-width: 280px;" aria-label="Название категории" /><button class="pl-btn pl-btn--secondary pl-btn--sm" type="submit" hidden>Сохранить</button></form><span class="xs muted">/catalog?cat={c.slug}</span></td>
+              <td class="num">{c.total ? <a class="link" href={`/admin/products?cat=${c.slug}`}>{c.total}</a> : <span class="muted">0</span>}</td>
+              <td class="num">{c.visible}</td>
+              <td><button class="act" type="button" aria-label="Удалить" data-del title={c.total ? 'Сначала перенесите товары' : 'Удалить'}><i class="ic ic-trash ic-18"></i></button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <form class="box-line col g16" style="flex: 1 1 300px; max-width: 380px;" data-create>
+      <h2 class="t-h4">Новая категория</h2>
+      <div class="pl-field"><label class="pl-field__label" for="cat-name">Название</label><input class="pl-input" id="cat-name" name="name" placeholder="Например, Для авто" /></div>
+      <span class="pl-field__error" hidden data-err><i class="ic ic-alert ic-16"></i><span></span></span>
+      <button class="pl-btn pl-btn--primary pl-btn--block" type="submit"><i class="ic ic-plus ic-18"></i>Добавить</button>
+      <p class="xs muted">Порядок здесь — это порядок фильтров в каталоге и на главной.</p>
+    </form>
+  </div>
+</Admin>
+<script>
+  import { api, toast } from '../../scripts/app';
+  const row = (el: Element) => Number(el.closest<HTMLElement>('[data-cat]')!.dataset.cat);
+  document.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const mv = t.closest<HTMLElement>('[data-move]');
+    if (mv) {
+      const r = await api('/api/admin/categories', { action: 'move', id: row(mv), dir: Number(mv.dataset.move) });
+      return r.ok ? location.reload() : toast(r.error, 'error');
+    }
+    const del = t.closest<HTMLElement>('[data-del]');
+    if (del) {
+      if (!confirm('Удалить категорию?')) return;
+      const r = await api('/api/admin/categories', { action: 'delete', id: row(del) });
+      return r.ok ? location.reload() : toast(r.error, 'error');
+    }
+  });
+  document.addEventListener('input', (e) => {
+    const f = (e.target as HTMLElement).closest('[data-rename]');
+    if (f) f.querySelector<HTMLElement>('button')!.hidden = false;
+  });
+  document.addEventListener('submit', async (e) => {
+    const f = e.target as HTMLFormElement;
+    if (f.matches('[data-rename]')) {
+      e.preventDefault();
+      const r = await api('/api/admin/categories', { action: 'rename', id: row(f), name: (f.elements.namedItem('name') as HTMLInputElement).value });
+      if (!r.ok) return toast(r.error, 'error');
+      toast('Сохранено');
+      f.querySelector<HTMLElement>('button')!.hidden = true;
+    }
+    if (f.matches('[data-create]')) {
+      e.preventDefault();
+      const r = await api('/api/admin/categories', { action: 'create', name: (f.elements.namedItem('name') as HTMLInputElement).value });
+      const err = f.querySelector<HTMLElement>('[data-err]')!;
+      err.hidden = r.ok;
+      if (!r.ok) return (err.querySelector('span')!.textContent = r.error);
+      location.reload();
+    }
+  });
+</script>

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { db } from './db';
 import { config, paymentsLive, isProd } from './config';
 import { getOrder, orderItems, markPaid, type Order } from './orders';
+import { notifyOrderPaid } from './notify';
 
 // Платежи. Боевой провайдер — ЮKassa (карта и СБП, редирект на защищённую страницу).
 // Без ключей включается тестовая страница /pay/test — только для разработки.
@@ -107,7 +108,10 @@ export function settle(paymentId: number, status: 'succeeded' | 'canceled'): Pay
   const p = getPayment(paymentId);
   if (!p || p.status !== 'pending') return p?.status ?? 'canceled';
   db.run(`update payments set status = ?, updated_at = datetime('now') where id = ?`, status, paymentId);
-  if (status === 'succeeded') markPaid(p.order_id, p.method);
+  if (status === 'succeeded') {
+    markPaid(p.order_id, p.method);
+    notifyOrderPaid(p.order_id);
+  }
   return status;
 }
 

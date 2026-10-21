@@ -1,7 +1,9 @@
 import { defineMiddleware } from 'astro:middleware';
 import { loadSession } from './lib/session';
+import { applySettings } from './lib/settings';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
+  applySettings();
   const s = loadSession(ctx.cookies);
   ctx.locals.sid = s.sid;
   ctx.locals.user = s.user;

@@ -30,7 +30,7 @@ await build({
     crypto: shim('crypto'),
     'node:url': shim('url'),
   },
-  external: ['sharp'],
+  external: ['sharp', 'nodemailer'],
   logLevel: 'info',
 });
 

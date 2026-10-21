@@ -36,15 +36,15 @@ const rows = [...items.map((i) => ({ name: `${i.name}, ${i.variant}`, qty: i.qty
       </div>
       <table style="margin-bottom: 24px;">
         <tbody>
-          <tr><td style="width: 50%;" colspan="2">Банк получателя: [наименование банка]</td><td>БИК</td><td>[БИК]</td></tr>
-          <tr><td colspan="2"></td><td>Сч. №</td><td>[корр. счёт]</td></tr>
-          <tr><td>ИНН {shop.inn}</td><td>КПП [КПП]</td><td rowspan="2">Сч. №</td><td rowspan="2">[расчётный счёт]</td></tr>
+          <tr><td style="width: 50%;" colspan="2">Банк получателя: {shop.bankName || '[наименование банка]'}</td><td>БИК</td><td>{shop.bik || '[БИК]'}</td></tr>
+          <tr><td colspan="2"></td><td>Сч. №</td><td>{shop.corrAccount || '[корр. счёт]'}</td></tr>
+          <tr><td>ИНН {shop.inn}</td><td>КПП {shop.kpp || '[КПП]'}</td><td rowspan="2">Сч. №</td><td rowspan="2">{shop.account || '[расчётный счёт]'}</td></tr>
           <tr><td colspan="2">Получатель: {shop.legalName}</td></tr>
         </tbody>
       </table>
       <h1 class="t-h3" style="font-size: 24px; margin-bottom: 16px;">Счёт на оплату № {o.id} от {dateDots(o.created_at)}</h1>
       <div class="col g4 sm" style="margin-bottom: 20px;">
-        <span><span class="muted">Поставщик:</span> {shop.legalName}, ИНН {shop.inn}, [юридический адрес]</span>
+        <span><span class="muted">Поставщик:</span> {shop.legalName}, ИНН {shop.inn}, {shop.address || '[юридический адрес]'}</span>
         <span><span class="muted">Покупатель:</span> {company?.name || o.name}{company && `, ИНН ${company.inn}`}{company?.kpp && `, КПП ${company.kpp}`}{company?.address && `, ${company.address}`}</span>
         <span><span class="muted">Основание:</span> заказ № {o.id} на сайте {shop.domain}</span>
       </div>

@@ -4,7 +4,7 @@ import DeliveryPicker from '../components/DeliveryPicker.astro';
 import PayModal from '../components/PayModal.astro';
 import { getCart } from '../lib/cart';
 import { db } from '../lib/db';
-import { rub, phoneInput, phoneMasked } from '../lib/format';
+import { rub, phoneInput } from '../lib/format';
 import { imageUrl } from '../lib/images';
 import { cartMode } from '../lib/session';
 import { OZON_MIN_PRICE } from '../lib/delivery';
@@ -36,7 +36,7 @@ const thumbs = cart.lines.filter((l) => l.available).slice(0, 4);
     <form class="two-col" data-checkout novalidate data-items={cart.itemsTotal} data-discount={cart.discount} data-count={cart.count}>
       <div class="col g32 checkout-blocks">
         <section class="box" style="padding: 32px;">
-          <div class="blk-h"><span class="blk-n">1</span><h2 class="t-h3 grow">Контакты</h2>{user && <span class="sm muted d-only">Вы вошли как {phoneMasked(user.phone)}</span>}</div>
+          <div class="blk-h"><span class="blk-n">1</span><h2 class="t-h3 grow">Контакты</h2>{user && <span class="sm muted d-only">Вы вошли как {user.email}</span>}</div>
           <div class="grid-form">
             <div class="pl-field span-2"><label class="pl-field__label" for="f-name">ФИО</label><input class="pl-input" id="f-name" name="name" value={name} placeholder="Фамилия Имя Отчество" autocomplete="name" required /><span class="pl-field__error" hidden data-err="name"><i class="ic ic-alert ic-16"></i>Укажите фамилию и имя получателя</span></div>
             <div class="pl-field"><label class="pl-field__label" for="f-email">Email</label><input class="pl-input" id="f-email" name="email" type="email" inputmode="email" value={email} placeholder="name@mail.ru" autocomplete="email" required /><span class="pl-field__hint">Пришлём чек и статус заказа</span><span class="pl-field__error" hidden data-err="email"><i class="ic ic-alert ic-16"></i>Проверьте адрес почты</span></div>

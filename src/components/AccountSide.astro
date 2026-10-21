@@ -1,5 +1,5 @@
 ---
-import { displayName, phonePretty } from '../lib/format';
+import { displayName } from '../lib/format';
 import { orderCounts } from '../lib/orders';
 import { favCount } from '../lib/favorites';
 
@@ -12,7 +12,7 @@ const counts = orderCounts(Astro.locals);
 const favs = favCount(Astro.locals);
 ---
 <aside class="acc-side d-only">
-  <div class="col g4" style="padding: 0 16px 16px;"><b style="font-weight: 600;">{displayName(u.name) || 'Покупатель'}</b><span class="sm muted">{phonePretty(u.phone)}</span></div>
+  <div class="col g4" style="padding: 0 16px 16px;"><b style="font-weight: 600;">{displayName(u.name) || 'Покупатель'}</b><span class="sm muted">{u.email}</span></div>
   <a class={`side-a ${active === 'orders' ? 'on' : ''}`} href="/account/orders"><i class="ic ic-box ic-20"></i>Мои заказы{counts.all > 0 && <span class="n">{counts.all}</span>}</a>
   <a class={`side-a ${active === 'profile' ? 'on' : ''}`} href="/account/profile"><i class="ic ic-user ic-20"></i>Профиль</a>
   <a class={`side-a ${active === 'favs' ? 'on' : ''}`} href="/favorites"><i class="ic ic-heart ic-20"></i>Избранное{favs > 0 && <span class="n">{favs}</span>}</a>
