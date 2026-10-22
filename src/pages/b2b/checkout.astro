@@ -11,9 +11,8 @@ if (!company || !user) return Astro.redirect('/b2b');
 const cart = getCart(Astro.locals, 'b2b');
 const last = db.get<any>('select * from orders where company_id = ? order by id desc limit 1', company.id);
 const dType = (last?.delivery_type as 'ozon' | 'wb') || 'ozon';
-const city = last?.city || 'Ростов-на-Дону';
-const pvzId = last?.delivery_type === 'ozon' ? last?.pvz_id : '';
-const wbAddress = last?.delivery_type === 'wb' ? last?.pvz_address : '';
+const pvzId = last?.delivery_type === 'wb' ? last?.pvz_id : '';
+const ozonAddress = last?.delivery_type === 'ozon' ? last?.pvz_address : '';
 const lines = cart.lines.filter((l) => l.available);
 const shortVariant = (v: string) => v.replace(' литров', ' л').replace(' литра', ' л').replace(' литр', ' л').replace('Зелёное яблоко · ', '').replace('Вишня · ', '');
 ---
@@ -45,7 +44,7 @@ const shortVariant = (v: string) => v.replace(' литров', ' л').replace(' 
           </section>
           <section class="box" style="padding: 32px;">
             <div class="blk-h"><span class="blk-n">2</span><h2 class="t-h3">Доставка</h2></div>
-            <DeliveryPicker type={dType} city={city} pvzId={pvzId} wbAddress={wbAddress} boxes={cart.boxes} collapsible />
+            <DeliveryPicker type={dType} pvzId={pvzId} ozonAddress={ozonAddress} boxes={cart.boxes} collapsible />
           </section>
           <section class="box" style="padding: 32px;">
             <div class="blk-h"><span class="blk-n">3</span><h2 class="t-h3">Оплата</h2></div>
@@ -147,7 +146,7 @@ const shortVariant = (v: string) => v.replace(' литров', ' л').replace(' 
       if (!(form.elements.namedItem('offer') as HTMLInputElement).checked) errs.push('offer');
       if (!(form.elements.namedItem('pd') as HTMLInputElement).checked) errs.push('pd');
       ['name', 'phone', 'email', 'wb', 'pvz', 'offer', 'pd'].forEach((k) => showErr(k, errs.includes(k)));
-      if (errs.includes('pvz')) {
+      if (errs.includes('wb')) {
         form.querySelector<HTMLElement>('[data-summary]')?.setAttribute('hidden', '');
         form.querySelector<HTMLElement>('[data-full]')?.removeAttribute('hidden');
       }

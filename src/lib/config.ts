@@ -70,6 +70,11 @@ export const shop = {
   corrAccount: '',
   account: '',
   notifyEmail: OWNER_EMAIL,
+  // Доставка: цена в рублях и срок в днях («2–4»), меняются в «Настройках»
+  ozonPrice: '99',
+  ozonDays: '2–4',
+  wbPrice: '199',
+  wbDays: '3–6',
 };
 
 export type ShopInfo = typeof shop;

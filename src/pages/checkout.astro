@@ -7,7 +7,7 @@ import { db } from '../lib/db';
 import { rub, phoneInput } from '../lib/format';
 import { smallUrl } from '../lib/images';
 import { cartMode } from '../lib/session';
-import { OZON_MIN_PRICE } from '../lib/delivery';
+import { deliveryCost } from '../lib/delivery';
 
 if (cartMode(Astro.locals) === 'b2b') return Astro.redirect('/b2b/checkout');
 const cart = getCart(Astro.locals);
@@ -22,9 +22,9 @@ const name = user?.name || last?.name || '';
 const email = user?.email || last?.email || '';
 const phone = user?.phone || last?.phone || '';
 const dType = (last?.delivery_type as 'ozon' | 'wb') || 'ozon';
-const city = last?.city || 'Ростов-на-Дону';
-const pvzId = last?.delivery_type === 'ozon' ? last?.pvz_id : '';
-const wbAddress = last?.delivery_type === 'wb' ? last?.pvz_address : '';
+// Прошлый ПВЗ WB — из справочника (id), прошлый адрес Ozon — как его вписал покупатель
+const pvzId = last?.delivery_type === 'wb' ? last?.pvz_id : '';
+const ozonAddress = last?.delivery_type === 'ozon' ? last?.pvz_address : '';
 const newsletter = Boolean(user?.newsletter);
 const accepted = Boolean(user?.offer_accepted_at && user?.pd_consent_at);
 const thumbs = cart.lines.filter((l) => l.available).slice(0, 4);
@@ -47,7 +47,7 @@ const thumbs = cart.lines.filter((l) => l.available).slice(0, 4);
 
         <section class="box" style="padding: 32px;">
           <div class="blk-h"><span class="blk-n">2</span><h2 class="t-h3">Доставка</h2></div>
-          <DeliveryPicker type={dType} city={city} pvzId={pvzId} wbAddress={wbAddress} />
+          <DeliveryPicker type={dType} pvzId={pvzId} ozonAddress={ozonAddress} />
         </section>
 
         <section class="box" style="padding: 32px;">
@@ -82,7 +82,7 @@ const thumbs = cart.lines.filter((l) => l.available).slice(0, 4);
         {cart.promoError && <div class="pl-note pl-note--error"><i class="ic ic-alert"></i><span>Промокод {cart.promoCode} не применён: {cart.promoError.toLowerCase()}.</span></div>}
         <div class="col g12">
           <div class="sum-row"><span class="muted">Товары, {cart.count} шт.</span><span>{rub(cart.itemsTotal)}</span></div>
-          <div class="sum-row"><span class="muted" data-dlabel>Доставка · ПВЗ Ozon</span><span data-dcost>от {rub(OZON_MIN_PRICE)}</span></div>
+          <div class="sum-row"><span class="muted" data-dlabel>Доставка · {dType === 'wb' ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}</span><span data-dcost>{rub(deliveryCost(dType))}</span></div>
           {cart.discount > 0 && <div class="sum-row"><span class="muted">Скидка по промокоду</span><span class="save">{rub(-cart.discount)}</span></div>}
         </div>
         <div class="hr"></div>

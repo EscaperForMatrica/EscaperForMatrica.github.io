@@ -4,7 +4,7 @@ import { json, fail, body, str, bool } from '../../lib/http';
 import { getCart } from '../../lib/cart';
 import { ensureSession, cartMode } from '../../lib/session';
 import { normPhone, isEmail } from '../../lib/format';
-import { getPoint, findCity, deliveryCost, deliveryEta } from '../../lib/delivery';
+import { chosenDelivery, deliveryCost, deliveryEta } from '../../lib/delivery';
 import { upsertPendingOrder } from '../../lib/orders';
 
 // Розничное оформление: создаёт (или обновляет) заказ «ожидает оплаты» и отдаёт его номер для выбора способа оплаты.
@@ -20,31 +20,15 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   if (!phone) return fail('Проверьте номер телефона', 400, { field: 'phone' });
   if (!bool(b.offer) || !bool(b.pd)) return fail('Нужно принять условия оферты и дать согласие на обработку данных', 400, { field: bool(b.offer) ? 'pd' : 'offer' });
 
-  const type = b.delivery_type === 'wb' ? 'wb' : 'ozon';
-  let city = '';
-  let pvzId = '';
-  let address = '';
-  let hours = '';
-  if (type === 'ozon') {
-    const p = getPoint(str(b.pvz_id, 40));
-    if (!p) return fail('Выберите пункт выдачи Ozon', 400, { field: 'pvz' });
-    city = p.city;
-    pvzId = p.id;
-    address = p.address;
-    hours = p.hours;
-  } else {
-    address = str(b.wb_address, 300);
-    if (address.length < 10) return fail('Укажите адрес пункта выдачи Wildberries', 400, { field: 'wb' });
-    city = findCity(address.split(',')[0]) || '';
-  }
+  const d = chosenDelivery(b);
+  if (!d.ok) return fail(d.error, 400, { field: d.field });
 
   const cart = getCart(locals);
   if (!cart.count) return fail('Корзина пуста — добавьте товары', 400);
-  const pvz = pvzId ? getPoint(pvzId) : undefined;
-  const cost = deliveryCost(type, pvz);
+  const cost = deliveryCost(d.type);
   const orderId = upsertPendingOrder(locals, cart, {
-    name, phone, email, deliveryType: type, city, pvzId, pvzAddress: address, pvzHours: hours,
-    deliveryCost: cost, deliveryEta: deliveryEta(type, pvz), newsletter: bool(b.newsletter),
+    name, phone, email, deliveryType: d.type, city: '', pvzId: d.pvzId, pvzAddress: d.address, pvzHours: d.hours,
+    deliveryCost: cost, deliveryEta: deliveryEta(d.type), newsletter: bool(b.newsletter),
   });
 
   if (locals.user) {

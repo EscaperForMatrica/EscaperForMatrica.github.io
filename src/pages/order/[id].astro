@@ -5,7 +5,7 @@ import { getOrder, canView, orderEvents, itemsCount, PAY_METHOD, type OrderStatu
 import { lastPayment, getPayment, syncPayment } from '../../lib/payments';
 import { rub, humanDateTime, etaRangeLong, parseDate } from '../../lib/format';
 import { shop } from '../../lib/config';
-import { getPoint } from '../../lib/delivery';
+import { deliveryDays } from '../../lib/delivery';
 
 const order = getOrder(Number(Astro.params.id));
 if (!order || !canView(order, Astro.locals)) return Astro.rewrite('/404');
@@ -28,12 +28,11 @@ const count = itemsCount(o.id);
 const events = orderEvents(o.id);
 const paidAt = events.find((e) => e.status === 'paid')?.at || o.paid_at;
 const isWb = o.delivery_type === 'wb';
-const pvz = getPoint(o.pvz_id);
-const etaLong = pvz ? (() => {
-  const from = parseDate(o.paid_at || o.created_at) || new Date();
-  return etaRangeLong(pvz.days[0], pvz.days[1], from);
-})() : '';
-const deliveryText = isWb ? `ПВЗ Wildberries, ${o.pvz_address.replace(/^г\.\s*[^,]+,\s*/, '')}` : `ПВЗ Ozon, ${o.pvz_address}`;
+const etaLong = (() => {
+  const [a, b] = deliveryDays(isWb ? 'wb' : 'ozon');
+  return etaRangeLong(a, b, parseDate(o.paid_at || o.created_at) || new Date());
+})();
+const deliveryText = `${isWb ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}, ${o.pvz_address}`;
 const order_: OrderStatus[] = ['paid', 'assembling', 'shipping', 'pvz', 'received'];
 const idx = order_.indexOf(o.status as OrderStatus);
 const steps = isWb
@@ -71,7 +70,7 @@ const title = paid ? `Заказ № ${o.id} оплачен` : cancelled ? `За
         </div>
         <div class="col g8 m-only" style="background: var(--surface-alt); border-radius: 8px; padding: 16px;">
           <div class="sum-row"><span class="muted">Оплачено {o.payment_method === 'sbp' ? 'через СБП' : 'картой'}</span><b class="strong">{rub(o.total)}</b></div>
-          <div class="sum-row"><span class="muted">{isWb ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}</span><span style="text-align: right;">{o.pvz_address.replace(/^г\.\s*[^,]+,\s*/, '')}</span></div>
+          <div class="sum-row"><span class="muted">{isWb ? 'ПВЗ Wildberries' : 'ПВЗ Ozon'}</span><span style="text-align: right;">{o.pvz_address}</span></div>
         </div>
         <div class="col g16">
           <h2 class="t-h3 d-only">Что дальше</h2>

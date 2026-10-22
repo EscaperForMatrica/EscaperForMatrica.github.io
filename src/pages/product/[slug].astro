@@ -7,7 +7,7 @@ import { favIds } from '../../lib/favorites';
 import { galleryUrls, smallUrl } from '../../lib/images';
 import { rub } from '../../lib/format';
 import { cartMode } from '../../lib/session';
-import { OZON_MIN_PRICE, WB_PRICE } from '../../lib/delivery';
+import { deliveryPrice, deliveryDaysLabel } from '../../lib/delivery';
 import { config } from '../../lib/config';
 
 const p = productBySlug(Astro.params.slug || '');
@@ -80,8 +80,8 @@ const ld = {
           <button class={`pl-icon-btn ${isFav ? 'is-on' : ''}`} type="button" data-fav={p.id} aria-pressed={isFav ? 'true' : 'false'} aria-label={isFav ? 'Убрать из избранного' : 'В избранное'} style="width: 48px; height: 48px; border: 1px solid var(--line); border-radius: 8px;"><i class={`ic ${isFav ? 'ic-heart-fill' : 'ic-heart'}`}></i></button>
         </div>
         <div class="col g12 box-line" style="padding: 20px;">
-          <div class="row g12"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">Доставка в ПВЗ Ozon</b> — от {rub(OZON_MIN_PRICE)}, 2–4 дня</span></div>
-          <div class="row g12"><i class="ic ic-truck ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Wildberries</b> — {rub(WB_PRICE)}, отправку оформит менеджер</span></div>
+          <div class="row g12"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">Доставка в ПВЗ Ozon</b> — {rub(deliveryPrice('ozon'))}, {deliveryDaysLabel('ozon')}</span></div>
+          <div class="row g12"><i class="ic ic-truck ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Wildberries</b> — {rub(deliveryPrice('wb'))}, {deliveryDaysLabel('wb')}</span></div>
           <div class="row g12"><i class="ic ic-shield ic-20" style="color: var(--accent-ink);"></i><span class="sm">Маркировка «Честный знак»</span></div>
         </div>
         <p>{p.description}</p>
@@ -134,8 +134,8 @@ const ld = {
       <span class="sm muted">{subtitle}</span>
       <div class="row g12" style="align-items: baseline;"><span class="pl-price" style="font-size: 28px;">{rub(price)}</span>{!b2b && p.old_price && p.old_price > (p.price ?? 0) && <span class="pl-price-old" style="font-size: 16px;">{rub(p.old_price)}</span>}</div>
       <div class="col g12 box-line" style="padding: 16px;">
-        <div class="row g12"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Ozon</b> — от {rub(OZON_MIN_PRICE)}, 2–4 дня</span></div>
-        <div class="row g12"><i class="ic ic-truck ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Wildberries</b> — {rub(WB_PRICE)}</span></div>
+        <div class="row g12"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Ozon</b> — {rub(deliveryPrice('ozon'))}, {deliveryDaysLabel('ozon')}</span></div>
+        <div class="row g12"><i class="ic ic-truck ic-20" style="color: var(--accent-ink);"></i><span class="sm"><b style="font-weight: 600;">ПВЗ Wildberries</b> — {rub(deliveryPrice('wb'))}, {deliveryDaysLabel('wb')}</span></div>
         <div class="row g12"><i class="ic ic-shield ic-20" style="color: var(--accent-ink);"></i><span class="sm">«Честный знак»</span></div>
       </div>
       <p>{p.description}</p>

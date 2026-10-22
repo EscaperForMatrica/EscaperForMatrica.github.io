@@ -3,7 +3,7 @@ import { db } from '../../../lib/db';
 import { json, fail, body, str, bool } from '../../../lib/http';
 import { getCart } from '../../../lib/cart';
 import { normPhone, isEmail } from '../../../lib/format';
-import { getPoint, findCity, deliveryCost, deliveryEta } from '../../../lib/delivery';
+import { chosenDelivery, deliveryCost, deliveryEta } from '../../../lib/delivery';
 import { upsertPendingOrder, placeInvoiceOrder } from '../../../lib/orders';
 import { notifyInvoice } from '../../../lib/notify';
 
@@ -22,19 +22,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const cart = getCart(locals, 'b2b');
   if (!cart.count) return fail('В заказе нет товаров');
-  const type = b.delivery_type === 'wb' ? 'wb' : 'ozon';
-  const pvz = type === 'ozon' ? getPoint(str(b.pvz_id, 40)) : undefined;
-  if (type === 'ozon' && !pvz) return fail('Выберите пункт выдачи Ozon', 400, { field: 'pvz' });
-  const wbAddress = str(b.wb_address, 300);
-  if (type === 'wb' && wbAddress.length < 10) return fail('Укажите адрес пункта выдачи Wildberries', 400, { field: 'wb' });
+  const d = chosenDelivery(b);
+  if (!d.ok) return fail(d.error, 400, { field: d.field });
 
-  const cost = deliveryCost(type, pvz, cart.boxes);
+  const cost = deliveryCost(d.type, cart.boxes);
   const invoice = b.payment !== 'card';
   const orderId = upsertPendingOrder(locals, cart, {
-    name, phone, email, deliveryType: type,
-    city: pvz?.city || findCity(wbAddress.split(',')[0]) || '',
-    pvzId: pvz?.id || '', pvzAddress: pvz?.address || wbAddress, pvzHours: pvz?.hours || '',
-    deliveryCost: cost, deliveryEta: deliveryEta(type, pvz), newsletter: bool(b.newsletter),
+    name, phone, email, deliveryType: d.type, city: '', pvzId: d.pvzId, pvzAddress: d.address, pvzHours: d.hours,
+    deliveryCost: cost, deliveryEta: deliveryEta(d.type), newsletter: bool(b.newsletter),
     paymentMethod: invoice ? 'invoice' : '',
   });
   db.run(`update users set newsletter = ?, pd_consent_at = coalesce(pd_consent_at, datetime('now')), offer_accepted_at = coalesce(offer_accepted_at, datetime('now')) where id = ?`, bool(b.newsletter) ? 1 : 0, user.id);

@@ -98,6 +98,17 @@ create table if not exists settings (
   value text not null default ''
 );
 
+create table if not exists pvz (
+  provider text not null,
+  id text not null,
+  address text not null,
+  search text not null,
+  hours text not null default '',
+  lat real,
+  lon real,
+  primary key (provider, id)
+);
+
 create table if not exists cart_items (
   owner text not null,
   mode text not null default 'retail',

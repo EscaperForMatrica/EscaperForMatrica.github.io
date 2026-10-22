@@ -7,7 +7,7 @@ export interface SettingDef {
   key: keyof ShopInfo;
   label: string;
   hint?: string;
-  group: 'contacts' | 'legal' | 'bank' | 'notify';
+  group: 'contacts' | 'legal' | 'bank' | 'delivery' | 'notify';
   placeholder?: string;
 }
 
@@ -24,6 +24,10 @@ export const SETTING_DEFS: SettingDef[] = [
   { key: 'bik', label: 'БИК', group: 'bank' },
   { key: 'corrAccount', label: 'Корр. счёт', group: 'bank' },
   { key: 'account', label: 'Расчётный счёт', group: 'bank' },
+  { key: 'ozonPrice', label: 'Доставка в ПВЗ Ozon, ₽', group: 'delivery', placeholder: '99' },
+  { key: 'ozonDays', label: 'Срок доставки Ozon, дней', group: 'delivery', placeholder: '2–4' },
+  { key: 'wbPrice', label: 'Доставка в ПВЗ Wildberries, ₽', group: 'delivery', placeholder: '199' },
+  { key: 'wbDays', label: 'Срок доставки Wildberries, дней', group: 'delivery', placeholder: '3–6', hint: 'Для опта цена растёт с числом коробок: от 150 ₽ + 30 ₽ за коробку' },
   { key: 'notifyEmail', label: 'Почта для уведомлений о заказах', group: 'notify', placeholder: 'orders@palada.shop', hint: 'Сюда придёт письмо о каждом оплаченном заказе и выставленном счёте' },
 ];
 

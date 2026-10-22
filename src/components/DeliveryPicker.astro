@@ -1,228 +1,178 @@
 ---
-import { cityNames, getPoints, getPoint, pvzEta, deliveryCost, WB_PRICE, WB_DAYS, OZON_MIN_PRICE } from '../lib/delivery';
-import { rub, etaRange } from '../lib/format';
+import { getPvz, deliveryCost, deliveryEta, deliveryDaysLabel, mapUrl, refreshPvzIfStale, type DeliveryType, type Pvz } from '../lib/delivery';
+import { rub } from '../lib/format';
 
 interface Props {
-  type?: 'ozon' | 'wb';
-  city?: string;
+  type?: DeliveryType;
+  /** Выбранный ПВЗ Wildberries (id из справочника WB). */
   pvzId?: string;
-  wbAddress?: string;
+  /** Адрес пункта Ozon, который покупатель вписал в прошлый раз. */
+  ozonAddress?: string;
   /** Оптовый заказ: доставка считается по числу коробок. */
   boxes?: number;
   /** Если ПВЗ уже выбран — показываем его строкой с кнопкой «Изменить» (макет оптового оформления). */
   collapsible?: boolean;
 }
-const { type = 'ozon', city = 'Ростов-на-Дону', pvzId = '', wbAddress = '', boxes = 0, collapsible = false } = Astro.props;
-const points = getPoints(city);
-const selected = pvzId ? getPoint(pvzId) : undefined;
-const wbCost = deliveryCost('wb', undefined, boxes);
-const ozonFrom = boxes ? deliveryCost('ozon', undefined, boxes) : OZON_MIN_PRICE;
-const data = {
-  cities: cityNames(),
-  boxes,
-  wb: { price: wbCost, eta: etaRange(WB_DAYS[0], WB_DAYS[1]) },
-};
+const { type = 'ozon', pvzId = '', ozonAddress = '', boxes = 0, collapsible = false } = Astro.props;
+refreshPvzIfStale();
+const selected = pvzId ? getPvz(pvzId) : undefined;
+const cost = { ozon: deliveryCost('ozon', boxes), wb: deliveryCost('wb', boxes) };
+const eta = { ozon: deliveryEta('ozon'), wb: deliveryEta('wb') };
+const days = { ozon: deliveryDaysLabel('ozon'), wb: deliveryDaysLabel('wb') };
+const boxesNote = boxes ? `${boxes} ${boxes === 1 ? 'коробка' : boxes < 5 ? 'коробки' : 'коробок'} — крупное отправление. Если пункт не примет такие габариты, менеджер свяжется и предложит вариант.` : '';
+const point = (p: Pvz, on: boolean) => ({ p, on, map: mapUrl(p) });
 ---
-<div class="col" data-delivery data-boxes={boxes} data-conf={JSON.stringify(data)}>
+<div class="col" data-delivery data-boxes={boxes} data-conf={JSON.stringify({ cost, eta })}>
   <div class="grid2 delivery-opts" style="margin-bottom: 24px;" role="radiogroup" aria-label="Способ доставки">
     <label class={`pl-option ${type === 'ozon' ? 'is-selected' : ''}`}>
       <input type="radio" name="delivery_type" value="ozon" checked={type === 'ozon'} />
       <span class="pl-radio"></span>
-      <span class="col grow"><b style="font-weight: 600;"><span class="d-only">Пункт выдачи Ozon</span><span class="m-only">ПВЗ Ozon</span></b><span class="sm muted">{boxes ? 'Выбор на карте' : <><span class="d-only">Выбор на карте · от {rub(ozonFrom)} · 2–4 дня</span><span class="m-only">Выбор на карте · от {rub(ozonFrom)}</span></>}</span></span>
+      <span class="col grow"><b style="font-weight: 600;"><span class="d-only">Пункт выдачи Ozon</span><span class="m-only">ПВЗ Ozon</span></b><span class="sm muted">По адресу пункта · {rub(cost.ozon)} · {days.ozon}</span></span>
     </label>
     <label class={`pl-option ${type === 'wb' ? 'is-selected' : ''}`}>
       <input type="radio" name="delivery_type" value="wb" checked={type === 'wb'} />
       <span class="pl-radio"></span>
-      <span class="col grow"><b style="font-weight: 600;"><span class="d-only">Пункт выдачи Wildberries</span><span class="m-only">ПВЗ Wildberries</span></b><span class="sm muted">{boxes ? 'По адресу ПВЗ' : <><span class="d-only">По адресу ПВЗ · {rub(WB_PRICE)} · 3–6 дней</span><span class="m-only">{rub(WB_PRICE)} · 3–6 дней</span></>}</span></span>
+      <span class="col grow"><b style="font-weight: 600;"><span class="d-only">Пункт выдачи Wildberries</span><span class="m-only">ПВЗ Wildberries</span></b><span class="sm muted">Выбор из списка · {rub(cost.wb)} · {days.wb}</span></span>
     </label>
   </div>
 
   <div data-panel="ozon" hidden={type !== 'ozon'}>
-    {collapsible && selected && (
-      <div class="pvz on" data-summary style="cursor: default;"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><div class="col g4 grow"><b style="font-weight: 600;">г. {selected.city}, {selected.address}</b><span class="muted">{selected.hours} · {rub(deliveryCost('ozon', selected, boxes))} · {pvzEta(selected)}</span></div><button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" style="background: var(--surface);" data-expand>Изменить</button></div>
-    )}
-    <div data-full hidden={Boolean(collapsible && selected)}>
-    <div class="pl-field" style="margin-bottom: 16px;">
-      <label class="pl-field__label" for="city">Город</label>
-      <div class="city-field">
-        <i class="ic ic-pin ic-20 muted" style="position: absolute; left: 14px; top: 14px;"></i>
-        <input class="pl-input" id="city" name="city" style="padding-left: 44px;" value={city} autocomplete="off" role="combobox" aria-expanded="false" aria-controls="city-suggest" data-city />
-        <div class="suggest" id="city-suggest" role="listbox" hidden data-suggest></div>
-      </div>
+    <div class="pl-field">
+      <label class="pl-field__label" for="ozon_address">Адрес пункта выдачи Ozon</label>
+      <textarea class="pl-input" id="ozon_address" name="ozon_address" style="min-height: 80px;" placeholder="г. Ростов-на-Дону, ул. Большая Садовая, 47">{ozonAddress}</textarea>
+      <span class="pl-field__hint">Скопируйте адрес удобного пункта из приложения Ozon или со страницы ozon.ru/geo</span>
+      <span class="pl-field__error" hidden data-err="pvz"><i class="ic ic-alert ic-16"></i>Укажите адрес пункта выдачи с городом и улицей</span>
     </div>
-    <div class="pvz-grid">
-      <div class="map" data-map aria-label="Карта пунктов выдачи">
-        <div class="map-canvas" data-canvas>
-          <span class="map-water" style="left: -8%; top: 66%; width: 100%; height: 70px; transform: rotate(-8deg);"></span>
-          <span class="map-park" style="left: 58%; top: 10%; width: 120px; height: 90px;"></span>
-          <span class="map-road" style="left: 0; right: 0; top: 39%; height: 10px;"></span>
-          <span class="map-road" style="left: 0; right: 0; top: 18%; height: 6px;"></span>
-          <span class="map-road" style="top: 0; bottom: 0; left: 23%; width: 10px;"></span>
-          <span class="map-road" style="top: 0; bottom: 0; left: 50%; width: 6px;"></span>
-          <span class="map-road" style="top: 0; bottom: 0; left: 85%; width: 8px;"></span>
-        </div>
-        <div data-pins>
-          {points.map((p) => <button class={`mpin ${p.id === selected?.id ? 'on' : ''}`} type="button" style={`left: calc(${p.x}% - 16px); top: calc(${p.y}% - 16px);`} data-pin={p.id} data-x={p.x} data-y={p.y} aria-label={p.address}></button>)}
-        </div>
-        <span class="map-ctl"><button type="button" aria-label="Приблизить" data-zoom="1"><i class="ic ic-plus ic-18"></i></button><button type="button" aria-label="Отдалить" data-zoom="-1"><i class="ic ic-minus ic-18"></i></button></span>
-      </div>
-      <div class="pvz-list" data-list role="listbox" aria-label="Пункты выдачи">
-        {points.map((p) => {
-          const on = p.id === selected?.id;
-          const cost = deliveryCost('ozon', p, boxes);
-          return (
-            <button type="button" class={`pvz ${on ? 'on' : ''}`} data-pvz={p.id} data-cost={cost} data-eta={pvzEta(p)} data-address={p.address} data-hours={p.hours} role="option" aria-selected={on ? 'true' : 'false'}>
-              <i class={`ic ic-store ic-20 ${on ? '' : 'muted'}`} style={on ? 'color: var(--accent-ink);' : undefined}></i>
-              <div class="col g4 grow"><b style="font-weight: 600;">{p.address}</b><span class="muted">{p.hours}</span>
-                <span class="row between"><span class={on ? 'save' : ''} style={on ? 'font-weight: 600;' : undefined}>{rub(cost)} · {pvzEta(p)}</span>{on && <span class="xs" style="color: var(--accent-ink);">Выбран</span>}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-    </div>
-    <input type="hidden" name="pvz_id" value={selected?.id || ''} data-pvz-input />
-    <span class="pl-field__error" style="margin-top: 8px;" hidden data-err="pvz"><i class="ic ic-alert ic-16"></i>Выберите пункт выдачи на карте или в списке</span>
-    <div class="pl-note" style="margin-top: 16px;"><i class="ic ic-info"></i><span>{boxes ? `${boxes} ${boxes === 1 ? 'коробка' : boxes < 5 ? 'коробки' : 'коробок'} — крупное отправление. Если ПВЗ не примет такие габариты, менеджер свяжется и предложит вариант.` : 'Заберите заказ в течение 7 дней. Возьмите паспорт или покажите QR-код из приложения Ozon.'}</span></div>
+    <div class="pl-note" style="margin-top: 16px;"><i class="ic ic-info"></i><span>{boxesNote || `Отправку оформит менеджер, трек-номер появится в личном кабинете. Заказ хранится в пункте 7 дней — возьмите паспорт или покажите QR-код из приложения Ozon. Доставка — ${rub(cost.ozon)}, ${days.ozon}.`}</span></div>
   </div>
 
   <div data-panel="wb" hidden={type !== 'wb'}>
-    <div class="pl-field"><label class="pl-field__label" for="wb_address">Адрес пункта выдачи Wildberries</label><textarea class="pl-input" id="wb_address" name="wb_address" style="min-height: 80px;" placeholder="г. Ростов-на-Дону, ул. Пушкинская, 140">{wbAddress}</textarea><span class="pl-field__hint">Скопируйте адрес из приложения Wildberries</span><span class="pl-field__error" hidden data-err="wb"><i class="ic ic-alert ic-16"></i>Укажите адрес пункта выдачи с городом и улицей</span></div>
-    <div class="pl-note" style="margin-top: 16px;"><i class="ic ic-info"></i><span>Отправку оформит менеджер, трек-номер появится в личном кабинете. Стоимость доставки фиксированная — {rub(wbCost)}.</span></div>
+    {collapsible && selected && (
+      <div class="pvz on" data-summary style="cursor: default;"><i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i><div class="col g4 grow"><b style="font-weight: 600;">{selected.address}</b><span class="muted">{selected.hours} · {rub(cost.wb)} · {eta.wb}</span></div><button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" style="background: var(--surface);" data-expand>Изменить</button></div>
+    )}
+    <div data-full hidden={Boolean(collapsible && selected)}>
+      <div class="pl-field" style="margin-bottom: 12px;">
+        <label class="pl-field__label" for="wb_q">Город и улица</label>
+        <div class="city-field">
+          <i class="ic ic-search ic-20 muted" style="position: absolute; left: 14px; top: 14px;"></i>
+          <input class="pl-input" id="wb_q" type="search" style="padding-left: 44px;" placeholder="Например: Ростов-на-Дону Пушкинская" autocomplete="off" aria-controls="wb-list" data-wb-q />
+        </div>
+        <span class="pl-field__hint">Все пункты выдачи Wildberries — справочник WB обновляется каждый день</span>
+      </div>
+      <div class="pvz-list" id="wb-list" data-list role="listbox" aria-label="Пункты выдачи Wildberries">
+        {selected
+          ? [point(selected, true)].map(({ p, map }) => (
+              <div class="pvz on" role="option" tabindex="0" aria-selected="true" data-pvz={p.id} data-address={p.address}>
+                <i class="ic ic-store ic-20" style="color: var(--accent-ink);"></i>
+                <div class="col g4 grow"><b style="font-weight: 600;">{p.address}</b><span class="muted">{p.hours}</span>
+                  <span class="row between"><span class="save" style="font-weight: 600;">{rub(cost.wb)} · {eta.wb}</span><span class="row g12">{map && <a class="xs link" href={map} target="_blank" rel="noopener">На карте</a>}<span class="xs" style="color: var(--accent-ink);">Выбран</span></span></span>
+                </div>
+              </div>
+            ))
+          : <p class="sm muted" style="padding: 8px 4px;" data-hint>Введите город и улицу — покажем пункты выдачи Wildberries.</p>}
+      </div>
+    </div>
+    <input type="hidden" name="pvz_id" value={selected?.id || ''} data-pvz-input />
+    <span class="pl-field__error" style="margin-top: 8px;" hidden data-err="wb"><i class="ic ic-alert ic-16"></i>Выберите пункт выдачи из списка</span>
+    <div class="pl-note" style="margin-top: 16px;"><i class="ic ic-info"></i><span>{boxesNote || `Отправку оформит менеджер, трек-номер появится в личном кабинете. Доставка — ${rub(cost.wb)}, ${days.wb}.`}</span></div>
   </div>
 </div>
 
 <script>
   import { rubJs } from '../scripts/fmt';
 
-  type Pt = { id: string; address: string; hours: string; price: number; cost: number; eta: string; x: number; y: number };
+  type Pt = { id: string; address: string; hours: string; map: string };
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
   document.querySelectorAll<HTMLElement>('[data-delivery]').forEach((root) => {
     const conf = JSON.parse(root.dataset.conf || '{}');
-    const cityInput = root.querySelector<HTMLInputElement>('[data-city]')!;
-    const suggest = root.querySelector<HTMLElement>('[data-suggest]')!;
-    const pins = root.querySelector<HTMLElement>('[data-pins]')!;
+    const q = root.querySelector<HTMLInputElement>('[data-wb-q]')!;
     const list = root.querySelector<HTMLElement>('[data-list]')!;
     const hidden = root.querySelector<HTMLInputElement>('[data-pvz-input]')!;
-    const canvas = root.querySelector<HTMLElement>('[data-canvas]')!;
-    let zoom = 1;
+    const ozon = root.querySelector<HTMLTextAreaElement>('#ozon_address')!;
 
     const state = () => {
       const type = (root.querySelector<HTMLInputElement>('input[name="delivery_type"]:checked')?.value || 'ozon') as 'ozon' | 'wb';
-      if (type === 'wb') {
-        const addr = root.querySelector<HTMLTextAreaElement>('#wb_address')!.value.trim();
-        return { type, cost: conf.wb.price, label: 'ПВЗ WB', address: addr, valid: addr.length >= 10 };
+      if (type === 'ozon') {
+        const addr = ozon.value.trim();
+        return { type, cost: conf.cost.ozon, label: 'ПВЗ Ozon', address: addr, valid: addr.length >= 10, eta: conf.eta.ozon };
       }
       const on = list.querySelector<HTMLElement>('.pvz.on');
-      return on
-        ? { type, cost: Number(on.dataset.cost), label: 'ПВЗ Ozon', address: on.dataset.address, valid: true, eta: on.dataset.eta }
-        : { type, cost: null as number | null, label: 'ПВЗ Ozon', address: '', valid: false };
+      return on && hidden.value
+        ? { type, cost: conf.cost.wb, label: 'ПВЗ WB', address: on.dataset.address, valid: true, eta: conf.eta.wb }
+        : { type, cost: conf.cost.wb, label: 'ПВЗ WB', address: '', valid: false, eta: conf.eta.wb };
     };
     const emit = () => root.dispatchEvent(new CustomEvent('delivery-change', { bubbles: true, detail: state() }));
 
-    const select = (id: string) => {
-      hidden.value = id;
-      list.querySelectorAll<HTMLElement>('.pvz').forEach((b) => {
-        const on = b.dataset.pvz === id;
-        b.classList.toggle('on', on);
-        b.setAttribute('aria-selected', String(on));
-        const ic = b.querySelector('.ic')!;
-        ic.classList.toggle('muted', !on);
-        (ic as HTMLElement).style.color = on ? 'var(--accent-ink)' : '';
-        const priceLine = b.querySelector('.row.between')!;
-        priceLine.innerHTML = `<span class="${on ? 'save' : ''}" style="${on ? 'font-weight: 600;' : ''}">${rubJs(Number(b.dataset.cost))} · ${b.dataset.eta}</span>${on ? '<span class="xs" style="color: var(--accent-ink);">Выбран</span>' : ''}`;
-        if (on) b.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      });
-      pins.querySelectorAll<HTMLElement>('.mpin').forEach((p) => p.classList.toggle('on', p.dataset.pin === id));
-      root.querySelector<HTMLElement>('[data-err="pvz"]')!.hidden = true;
+    const row = (p: Pt, on: boolean) => `<div class="pvz${on ? ' on' : ''}" role="option" tabindex="0" aria-selected="${on}" data-pvz="${esc(p.id)}" data-address="${esc(p.address)}">
+      <i class="ic ic-store ic-20${on ? '' : ' muted'}"${on ? ' style="color: var(--accent-ink);"' : ''}></i>
+      <div class="col g4 grow"><b style="font-weight: 600;">${esc(p.address)}</b><span class="muted">${esc(p.hours)}</span>
+        <span class="row between"><span${on ? ' class="save" style="font-weight: 600;"' : ''}>${rubJs(conf.cost.wb)} · ${conf.eta.wb}</span><span class="row g12">${p.map ? `<a class="xs link" href="${esc(p.map)}" target="_blank" rel="noopener">На карте</a>` : ''}${on ? '<span class="xs" style="color: var(--accent-ink);">Выбран</span>' : ''}</span></span>
+      </div></div>`;
+
+    let points: Pt[] = [];
+    const render = (note = '') => {
+      list.innerHTML = points.map((p) => row(p, p.id === hidden.value)).join('') + (note ? `<p class="sm muted" style="padding: 8px 4px;">${note}</p>` : '');
+    };
+
+    const select = (el: HTMLElement) => {
+      hidden.value = el.dataset.pvz!;
+      const p = points.find((x) => x.id === hidden.value);
+      if (p) render();
+      else {
+        list.querySelectorAll<HTMLElement>('.pvz').forEach((b) => b.classList.toggle('on', b === el));
+      }
+      root.querySelector<HTMLElement>('[data-err="wb"]')!.hidden = true;
       emit();
     };
 
-    const placePins = () => {
-      pins.querySelectorAll<HTMLElement>('.mpin').forEach((p) => {
-        const x = 50 + (Number(p.dataset.x) - 50) * zoom;
-        const y = 50 + (Number(p.dataset.y) - 50) * zoom;
-        const size = p.classList.contains('on') ? 20 : 16;
-        p.style.left = `calc(${x}% - ${size}px)`;
-        p.style.top = `calc(${y}% - ${size}px)`;
-        p.hidden = x < -5 || x > 105 || y < -5 || y > 105;
-      });
+    let timer = 0;
+    let seq = 0;
+    const search = async () => {
+      const text = q.value.trim();
+      if (text.length < 3) return;
+      const my = ++seq;
+      const r = await fetch(`/api/delivery?q=${encodeURIComponent(text)}`).then((x) => x.json()).catch(() => null);
+      if (my !== seq) return;
+      if (!r) return render('Не удалось загрузить пункты. Попробуйте ещё раз.');
+      if (!r.ready) {
+        points = [];
+        render('Загружаем справочник пунктов Wildberries…');
+        timer = window.setTimeout(search, 2500);
+        return;
+      }
+      points = r.points;
+      const more = r.total > points.length ? `Показаны ${points.length} из ${r.total} — уточните улицу.` : '';
+      render(points.length ? more : 'Пунктов не нашли. Проверьте написание или укажите только город и улицу.');
     };
-
-    const render = (points: Pt[]) => {
-      pins.innerHTML = points.map((p) => `<button class="mpin" type="button" data-pin="${p.id}" data-x="${p.x}" data-y="${p.y}" aria-label="${p.address}"></button>`).join('');
-      list.innerHTML = points.length
-        ? points
-            .map(
-              (p) => `<button type="button" class="pvz" data-pvz="${p.id}" data-cost="${p.cost}" data-eta="${p.eta}" data-address="${p.address}" data-hours="${p.hours}" role="option" aria-selected="false">
-              <i class="ic ic-store ic-20 muted"></i><div class="col g4 grow"><b style="font-weight: 600;">${p.address}</b><span class="muted">${p.hours}</span><span class="row between"><span>${rubJs(p.cost)} · ${p.eta}</span></span></div></button>`,
-            )
-            .join('')
-        : '<p class="sm muted" style="padding: 8px 4px;">В этом городе пока нет пунктов Ozon в нашем списке. Выберите Wildberries или напишите нам в WhatsApp.</p>';
-      hidden.value = '';
-      zoom = 1;
-      canvas.style.transform = '';
-      placePins();
-      emit();
-    };
-
-    const loadCity = async (city: string) => {
-      cityInput.value = city;
-      suggest.hidden = true;
-      cityInput.setAttribute('aria-expanded', 'false');
-      const r = await fetch(`/api/delivery?city=${encodeURIComponent(city)}&boxes=${conf.boxes || 0}`).then((x) => x.json());
-      if (r.city) cityInput.value = r.city;
-      render(r.points || []);
-    };
-
-    // Подсказки городов
-    const showSuggest = () => {
-      const q = cityInput.value.trim().toLowerCase().replace(/^г\.?\s*/, '');
-      const items = (conf.cities as string[]).filter((c) => !q || c.toLowerCase().includes(q)).slice(0, 8);
-      suggest.innerHTML = items.map((c) => `<button type="button" role="option" data-c="${c}">${c}</button>`).join('') || '<span class="sm muted" style="padding: 10px 12px;">Город не найден</span>';
-      suggest.hidden = false;
-      cityInput.setAttribute('aria-expanded', 'true');
-    };
-    cityInput.addEventListener('focus', () => {
-      cityInput.select();
-      showSuggest();
+    q.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(search, 300);
     });
-    cityInput.addEventListener('input', showSuggest);
-    cityInput.addEventListener('keydown', (e) => {
+    q.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const first = suggest.querySelector<HTMLElement>('[data-c]');
-        if (first) loadCity(first.dataset.c!);
-      }
-      if (e.key === 'Escape') suggest.hidden = true;
-    });
-    cityInput.addEventListener('blur', () => setTimeout(() => (suggest.hidden = true), 150));
-    suggest.addEventListener('mousedown', (e) => {
-      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-c]');
-      if (b) {
-        e.preventDefault();
-        loadCity(b.dataset.c!);
-        cityInput.blur();
+        clearTimeout(timer);
+        search();
       }
     });
 
     root.addEventListener('click', (e) => {
       const t = e.target as HTMLElement;
-      const pin = t.closest<HTMLElement>('[data-pin]');
-      if (pin) return select(pin.dataset.pin!);
-      const row = t.closest<HTMLElement>('[data-pvz]');
-      if (row) return select(row.dataset.pvz!);
+      if (t.closest('a')) return;
+      const item = t.closest<HTMLElement>('[data-pvz]');
+      if (item && list.contains(item)) return select(item);
       if (t.closest('[data-expand]')) {
         root.querySelector<HTMLElement>('[data-summary]')!.hidden = true;
         root.querySelector<HTMLElement>('[data-full]')!.hidden = false;
-        return;
+        q.focus();
       }
-      const z = t.closest<HTMLElement>('[data-zoom]');
-      if (z) {
-        zoom = Math.min(2, Math.max(1, zoom + Number(z.dataset.zoom) * 0.5));
-        canvas.style.transform = `scale(${zoom})`;
-        placePins();
+    });
+    list.addEventListener('keydown', (e) => {
+      const item = (e.target as HTMLElement).closest<HTMLElement>('[data-pvz]');
+      if (item && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        select(item);
       }
     });
 
@@ -232,13 +182,12 @@ const data = {
       root.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== r.value));
       emit();
     });
-    root.querySelector('#wb_address')!.addEventListener('input', () => {
-      root.querySelector<HTMLElement>('[data-err="wb"]')!.hidden = true;
+    ozon.addEventListener('input', () => {
+      root.querySelector<HTMLElement>('[data-err="pvz"]')!.hidden = true;
       emit();
     });
 
     (root as any).deliveryState = state;
-    placePins();
     queueMicrotask(emit);
   });
 </script>

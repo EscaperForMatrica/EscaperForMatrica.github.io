@@ -1,157 +1,176 @@
+import { db } from './db';
+import { shop } from './config';
 import { etaRange } from './format';
 
-// Пункты выдачи Ozon. Сейчас — справочник в коде (демо-данные); для боевого запуска
-// замените getPoints() на запрос к API Ozon Logistics / виджету выбора ПВЗ.
+// Доставка в пункты выдачи.
+// Wildberries — настоящий справочник всех ПВЗ России из открытого файла, которым пользуется сам wildberries.ru;
+// обновляется раз в сутки. Ozon отдаёт свои ПВЗ только продавцам с «Ozon Доставкой» через Seller API
+// (v1/delivery/point/list, OAuth-токен) — пока этого нет, покупатель вписывает адрес пункта из приложения Ozon.
+// Цены и сроки — из «Настроек» админки.
+
+export type DeliveryType = 'ozon' | 'wb';
 
 export interface Pvz {
   id: string;
-  city: string;
   address: string;
   hours: string;
-  price: number;
-  days: [number, number];
-  /** Позиция метки на схеме карты, % */
-  x: number;
-  y: number;
+  lat: number | null;
+  lon: number | null;
 }
 
-export const WB_PRICE = 199;
-export const WB_DAYS: [number, number] = [3, 6];
-export const OZON_MIN_PRICE = 99;
+// Полная версия справочника (около 90 тысяч пунктов по России, ~50 МБ); all-poo-fr-v2 — неполная выборка
+const WB_URL = 'https://static-basket-01.wbbasket.ru/vol0/data/all-poo-fr-v11.json';
+const DAY_MS = 24 * 3600 * 1000;
 
-type Raw = [address: string, hours: string, price: number, d1: number, d2: number];
+const DEFAULTS = { ozon: { price: 99, days: [2, 4] }, wb: { price: 199, days: [3, 6] } } as const;
 
-const EVERY_9_21 = 'Ежедневно 9:00–21:00';
-const EVERY_10_22 = 'Ежедневно 10:00–22:00';
-const WEEK_9_20 = 'Пн–Сб 9:00–20:00';
-const EVERY_8_22 = 'Ежедневно 8:00–22:00';
+export function deliveryPrice(type: DeliveryType): number {
+  const n = parseInt((type === 'wb' ? shop.wbPrice : shop.ozonPrice).replace(/\s/g, ''), 10);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULTS[type].price;
+}
 
-const CITIES: Record<string, Raw[]> = {
-  'Ростов-на-Дону': [
-    ['ул. Большая Садовая, 47', EVERY_9_21, 99, 3, 5],
-    ['пр. Ворошиловский, 12', EVERY_10_22, 99, 3, 5],
-    ['ул. Пушкинская, 140', WEEK_9_20, 129, 4, 6],
-    ['пр. Шолохова, 31', EVERY_9_21, 99, 3, 5],
-    ['ул. Красноармейская, 5', EVERY_8_22, 129, 4, 6],
-  ],
-  'Москва': [
-    ['ул. Тверская, 12', EVERY_8_22, 129, 3, 5],
-    ['Ленинградский пр-т, 39', EVERY_10_22, 129, 3, 5],
-    ['ул. Профсоюзная, 56', EVERY_9_21, 149, 4, 6],
-    ['ул. Новослободская, 4', EVERY_9_21, 129, 3, 5],
-    ['Варшавское ш., 87', WEEK_9_20, 149, 4, 6],
-  ],
-  'Санкт-Петербург': [
-    ['Невский пр-т, 88', EVERY_9_21, 129, 4, 6],
-    ['ул. Садовая, 32', EVERY_10_22, 129, 4, 6],
-    ['Московский пр-т, 143', EVERY_8_22, 149, 5, 7],
-    ['пр. Просвещения, 19', WEEK_9_20, 149, 5, 7],
-  ],
-  'Краснодар': [
-    ['ул. Красная, 120', EVERY_9_21, 99, 3, 5],
-    ['ул. Северная, 324', EVERY_10_22, 99, 3, 5],
-    ['ул. Ставропольская, 207', WEEK_9_20, 129, 4, 6],
-    ['ул. Тургенева, 33', EVERY_8_22, 99, 3, 5],
-  ],
-  'Ставрополь': [
-    ['пр. Карла Маркса, 53', EVERY_9_21, 99, 3, 5],
-    ['ул. Ленина, 251', EVERY_10_22, 129, 4, 6],
-    ['ул. 50 лет ВЛКСМ, 16', WEEK_9_20, 99, 3, 5],
-  ],
-  'Пятигорск': [
-    ['пр. Кирова, 21', EVERY_9_21, 99, 3, 5],
-    ['ул. Ессентукская, 31', EVERY_10_22, 129, 4, 6],
-    ['ул. Университетская, 9', WEEK_9_20, 99, 3, 5],
-  ],
-  'Махачкала': [
-    ['пр. Имама Шамиля, 35', EVERY_9_21, 129, 4, 6],
-    ['ул. Ярагского, 71', EVERY_10_22, 129, 4, 6],
-    ['пр. Гамидова, 18', EVERY_8_22, 149, 5, 7],
-  ],
-  'Грозный': [
-    ['пр. Путина, 10', EVERY_9_21, 129, 4, 6],
-    ['ул. Лорсанова, 4', EVERY_10_22, 129, 4, 6],
-    ['пр. Кадырова, 52', WEEK_9_20, 149, 5, 7],
-  ],
-  'Назрань': [
-    ['ул. Московская, 23', EVERY_9_21, 129, 4, 6],
-    ['пр. Базоркина, 70', WEEK_9_20, 129, 4, 6],
-  ],
-  'Владикавказ': [
-    ['пр. Мира, 15', EVERY_9_21, 129, 4, 6],
-    ['ул. Кирова, 44', EVERY_10_22, 129, 4, 6],
-    ['ул. Владикавказская, 30', WEEK_9_20, 149, 5, 7],
-  ],
-  'Нальчик': [
-    ['пр. Ленина, 38', EVERY_9_21, 129, 4, 6],
-    ['ул. Кабардинская, 162', EVERY_10_22, 129, 4, 6],
-  ],
-  'Волгоград': [
-    ['пр. Ленина, 59', EVERY_9_21, 129, 4, 6],
-    ['ул. Рабоче-Крестьянская, 10', EVERY_10_22, 129, 4, 6],
-    ['ул. Землячки, 110', WEEK_9_20, 149, 5, 7],
-  ],
-  'Воронеж': [
-    ['пр. Революции, 33', EVERY_9_21, 129, 4, 6],
-    ['Московский пр-т, 129', EVERY_10_22, 129, 4, 6],
-  ],
-  'Казань': [
-    ['ул. Баумана, 44', EVERY_9_21, 149, 5, 7],
-    ['пр. Ямашева, 46', EVERY_10_22, 149, 5, 7],
-  ],
+export function deliveryDays(type: DeliveryType): [number, number] {
+  const m = (type === 'wb' ? shop.wbDays : shop.ozonDays).match(/\d+/g)?.map(Number) || [];
+  if (!m.length) return [...DEFAULTS[type].days];
+  return [m[0], Math.max(m[0], m[1] ?? m[0])];
+}
+
+/** «2–4 дня» для подписей в карточке товара и в выборе доставки. */
+export function deliveryDaysLabel(type: DeliveryType): string {
+  const [a, b] = deliveryDays(type);
+  const n = b % 100;
+  const word = n % 10 === 1 && n !== 11 ? 'день' : n % 10 >= 2 && n % 10 <= 4 && (n < 12 || n > 14) ? 'дня' : 'дней';
+  return `${a === b ? a : `${a}–${b}`} ${word}`;
+}
+
+export const deliveryEta = (type: DeliveryType) => {
+  const [a, b] = deliveryDays(type);
+  return etaRange(a, b);
 };
 
-// Раскладка меток на схеме карты (повторяет макет).
-const SPOTS: Array<[number, number]> = [
-  [44, 46], [20, 30], [76, 56], [32, 10], [86, 26], [60, 18], [12, 66],
-];
-
-function slug(s: string) {
-  let h = 0;
-  for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return h.toString(36);
-}
-
-const ALL: Pvz[] = Object.entries(CITIES).flatMap(([city, list]) =>
-  list.map(([address, hours, price, d1, d2], i) => ({
-    id: `oz-${slug(city + address)}`,
-    city,
-    address,
-    hours,
-    price,
-    days: [d1, d2] as [number, number],
-    x: SPOTS[i % SPOTS.length][0],
-    y: SPOTS[i % SPOTS.length][1],
-  })),
-);
-
-export const cityNames = () => Object.keys(CITIES);
-
-export function findCity(q: string): string | undefined {
-  const n = q.trim().toLowerCase().replace(/^г\.?\s*/, '');
-  return cityNames().find((c) => c.toLowerCase() === n) || cityNames().find((c) => c.toLowerCase().startsWith(n));
-}
-
-export function getPoints(city: string): Pvz[] {
-  return ALL.filter((p) => p.city === city);
-}
-
-export function getPoint(id: string): Pvz | undefined {
-  return ALL.find((p) => p.id === id);
-}
-
-export function pvzEta(p: Pvz) {
-  return etaRange(p.days[0], p.days[1]);
-}
-
 /** Стоимость доставки. Для опта — по числу коробок (крупное отправление). */
-export function deliveryCost(type: 'ozon' | 'wb', pvz: Pvz | undefined, boxes = 0): number {
-  if (type === 'wb') return boxes ? Math.max(WB_PRICE, 150 + 30 * boxes) : WB_PRICE;
-  const base = pvz?.price ?? OZON_MIN_PRICE;
+export function deliveryCost(type: DeliveryType, boxes = 0): number {
+  const base = deliveryPrice(type);
   return boxes ? Math.max(base, 150 + 30 * boxes) : base;
 }
 
-export function deliveryEta(type: 'ozon' | 'wb', pvz: Pvz | undefined): string {
-  if (type === 'wb') return etaRange(WB_DAYS[0], WB_DAYS[1]);
-  return pvz ? pvzEta(pvz) : '';
+// ── Справочник ПВЗ Wildberries ──
+
+const STOP = new Set(['ул', 'улица', 'дом', 'обл', 'область', 'край', 'город', 'пр', 'кт', 'проспект', 'пер', 'переулок', 'ш', 'шоссе', 'бульвар', 'пгт', 'респ', 'республика', 'корп', 'стр']);
+
+export const normalize = (s: string) =>
+  s.toLowerCase().replace(/ё/g, 'е').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+const meta = (key: string) => db.value<string>('select value from settings where key = ?', key) || '';
+const setMeta = (key: string, value: string) =>
+  db.run('insert into settings (key, value) values (?, ?) on conflict(key) do update set value = excluded.value', key, value);
+
+const DAYS = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
+const DAYS_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+/** «понедельник: 10:00-21:00, вторник: …» → «Ежедневно 10:00–21:00» или «Пн–Пт 09:00–21:00, Сб–Вс 10:00–18:00». */
+export function hoursLabel(raw: string): string {
+  const byDay: Record<string, string> = {};
+  for (const part of raw.split(',')) {
+    const m = part.trim().match(/^([а-яё]+):\s*(.+)$/i);
+    if (m) byDay[m[1].toLowerCase()] = m[2].trim().replace(/(\d)-(\d)/g, '$1–$2');
+  }
+  const v = DAYS.map((d) => byDay[d]);
+  if (v.some((x) => !x)) return raw.trim();
+  if (v.every((x) => x === v[0])) return `Ежедневно ${v[0]}`;
+  const out: string[] = [];
+  for (let i = 0; i < 7; ) {
+    let j = i;
+    while (j < 6 && v[j + 1] === v[i]) j++;
+    out.push(`${j > i ? `${DAYS_SHORT[i]}–${DAYS_SHORT[j]}` : DAYS_SHORT[i]} ${v[i]}`);
+    i = j + 1;
+  }
+  return out.join(', ');
 }
+
+let loading: Promise<void> | null = null;
+
+/** Загружает справочник WB, если его нет или он старше суток. Не ждёт загрузки — поиск работает по текущей версии. */
+export function refreshPvzIfStale(): void {
+  const updated = Number(meta('pvz_wb_updated')) || 0;
+  if (loading || Date.now() - updated < DAY_MS) return;
+  // Несколько процессов Passenger не должны качать файл одновременно: блокировка на 10 минут через базу
+  db.run(`insert or ignore into settings (key, value) values ('pvz_wb_lock', '0')`);
+  const now = Date.now();
+  const got = db.run(`update settings set value = ? where key = 'pvz_wb_lock' and cast(value as integer) < ?`, String(now), now - 10 * 60 * 1000);
+  if (!Number(got.changes)) return;
+  loading = loadWb()
+    .catch((e) => console.error('[pvz] справочник WB не обновлён:', e?.message || e))
+    .finally(() => {
+      loading = null;
+      setMeta('pvz_wb_lock', '0');
+    });
+}
+
+async function loadWb() {
+  const res = await fetch(WB_URL, { signal: AbortSignal.timeout(90_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as Array<{ country: string; items: any[] }>;
+  const items = data.find((c) => c.country === 'ru')?.items || [];
+  if (items.length < 1000) throw new Error(`в файле всего ${items.length} пунктов`);
+  const insert = db.raw.prepare('insert or replace into pvz (provider, id, address, search, hours, lat, lon) values (?, ?, ?, ?, ?, ?, ?)');
+  db.tx(() => {
+    db.run(`delete from pvz where provider = 'wb'`);
+    for (const p of items) {
+      const address = String(p.address || '').trim();
+      if (!p.id || !address) continue;
+      // В полной версии координаты — строка «[55.93, 37.51]»
+      let coords: unknown = p.coordinates;
+      if (typeof coords === 'string') {
+        try {
+          coords = JSON.parse(coords);
+        } catch {
+          coords = null;
+        }
+      }
+      const [lat, lon] = Array.isArray(coords) ? coords.map(Number) : [null, null];
+      insert.run('wb', String(p.id), address, normalize(address), hoursLabel(String(p.workTime || '')), lat, lon);
+    }
+  });
+  setMeta('pvz_wb_updated', String(Date.now()));
+  console.log(`[pvz] справочник WB обновлён: ${items.length} пунктов`);
+}
+
+/** Поиск ПВЗ Wildberries по городу и улице: все слова запроса должны встретиться в адресе. */
+export function searchPvz(q: string, limit = 30): { points: Pvz[]; total: number; ready: boolean } {
+  refreshPvzIfStale();
+  const ready = Boolean(db.value(`select 1 from pvz where provider = 'wb' limit 1`));
+  const words = normalize(q).split(' ').filter((w) => w.length >= 2 && !STOP.has(w)).slice(0, 6);
+  if (!ready || !words.length) return { points: [], total: 0, ready };
+  const where = words.map(() => `search like ?`).join(' and ');
+  const params = words.map((w) => `%${w}%`);
+  const total = db.value<number>(`select count(*) from pvz where provider = 'wb' and ${where}`, ...params) || 0;
+  const points = db.all<Pvz>(
+    `select id, address, hours, lat, lon from pvz where provider = 'wb' and ${where} order by instr(search, ?), address limit ?`,
+    ...params, words[0], limit,
+  );
+  return { points, total, ready };
+}
+
+export function getPvz(id: string): Pvz | undefined {
+  return db.get<Pvz>(`select id, address, hours, lat, lon from pvz where provider = 'wb' and id = ?`, id);
+}
+
+export type ChosenDelivery =
+  | { ok: true; type: DeliveryType; pvzId: string; address: string; hours: string }
+  | { ok: false; error: string; field: 'pvz' | 'wb' };
+
+/** Пункт выдачи из формы оформления: WB — по id из справочника, Ozon — адрес, который вписал покупатель. */
+export function chosenDelivery(b: Record<string, any>): ChosenDelivery {
+  if (b.delivery_type === 'wb') {
+    const p = getPvz(String(b.pvz_id ?? '').trim().slice(0, 40));
+    if (!p) return { ok: false, error: 'Выберите пункт выдачи Wildberries из списка', field: 'wb' };
+    return { ok: true, type: 'wb', pvzId: p.id, address: p.address, hours: p.hours };
+  }
+  const address = String(b.ozon_address ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  if (address.length < 10) return { ok: false, error: 'Укажите адрес пункта выдачи Ozon с городом и улицей', field: 'pvz' };
+  return { ok: true, type: 'ozon', pvzId: '', address, hours: '' };
+}
+
+/** Ссылка «на карте» — Яндекс Карты с меткой. */
+export const mapUrl = (p: Pick<Pvz, 'lat' | 'lon'>) => (p.lat && p.lon ? `https://yandex.ru/maps/?pt=${p.lon},${p.lat}&z=17&l=map` : '');

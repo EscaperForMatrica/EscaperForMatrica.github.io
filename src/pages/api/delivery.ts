@@ -1,11 +1,14 @@
 import type { APIRoute } from 'astro';
 import { json } from '../../lib/http';
-import { findCity, getPoints, pvzEta, deliveryCost } from '../../lib/delivery';
+import { searchPvz, mapUrl } from '../../lib/delivery';
 
+// Поиск пунктов выдачи Wildberries по городу и улице.
 export const GET: APIRoute = ({ url }) => {
-  const city = findCity(url.searchParams.get('city') || '');
-  const boxes = Math.max(0, parseInt(url.searchParams.get('boxes') || '0', 10) || 0);
-  if (!city) return json({ city: null, points: [] });
-  const points = getPoints(city).map((p) => ({ id: p.id, address: p.address, hours: p.hours, price: p.price, cost: deliveryCost('ozon', p, boxes), eta: pvzEta(p), x: p.x, y: p.y }));
-  return json({ city, points });
+  const q = (url.searchParams.get('q') || '').slice(0, 120);
+  const r = searchPvz(q);
+  return json({
+    ready: r.ready,
+    total: r.total,
+    points: r.points.map((p) => ({ id: p.id, address: p.address, hours: p.hours, map: mapUrl(p) })),
+  });
 };
