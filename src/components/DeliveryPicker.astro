@@ -111,7 +111,8 @@ const point = (p: Pvz, on: boolean) => ({ p, on, map: mapUrl(p) });
       </div></div>`;
 
     let points: Pt[] = [];
-    const render = (note = '') => {
+    let note = '';
+    const render = () => {
       list.innerHTML = points.map((p) => row(p, p.id === hidden.value)).join('') + (note ? `<p class="sm muted" style="padding: 8px 4px;">${note}</p>` : '');
     };
 
@@ -134,16 +135,21 @@ const point = (p: Pvz, on: boolean) => ({ p, on, map: mapUrl(p) });
       const my = ++seq;
       const r = await fetch(`/api/delivery?q=${encodeURIComponent(text)}`).then((x) => x.json()).catch(() => null);
       if (my !== seq) return;
-      if (!r) return render('Не удалось загрузить пункты. Попробуйте ещё раз.');
+      if (!r) {
+        note = 'Не удалось загрузить пункты. Попробуйте ещё раз.';
+        return render();
+      }
       if (!r.ready) {
         points = [];
-        render('Загружаем справочник пунктов Wildberries…');
+        note = 'Загружаем справочник пунктов Wildberries…';
+        render();
         timer = window.setTimeout(search, 2500);
         return;
       }
       points = r.points;
       const more = r.total > points.length ? `Показаны ${points.length} из ${r.total} — уточните улицу.` : '';
-      render(points.length ? more : 'Пунктов не нашли. Проверьте написание или укажите только город и улицу.');
+      note = points.length ? more : 'Пунктов не нашли. Проверьте написание или укажите только город и улицу.';
+      render();
     };
     q.addEventListener('input', () => {
       clearTimeout(timer);
