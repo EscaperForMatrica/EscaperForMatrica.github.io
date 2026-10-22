@@ -54,6 +54,11 @@ function inCartButton(btn: HTMLElement) {
   btn.replaceWith(a);
 }
 
+// Кнопки «Скачать PDF / печать» — без inline-обработчиков, их запрещает Content-Security-Policy
+document.addEventListener('click', (e) => {
+  if ((e.target as HTMLElement).closest('[data-print]')) window.print();
+});
+
 document.addEventListener('click', async (e) => {
   const t = e.target as HTMLElement;
 

@@ -49,6 +49,21 @@ export function imageUrl(ref: string | undefined | null, variant = 1): string {
   return ref;
 }
 
+// У фото каталога и загруженных в админке есть уменьшенная копия <имя>-480.webp — для карточек и миниатюр
+const HAS_SMALL = /^\/(images|uploads)\/products\/[^/]+\.webp$/;
+
+/** Миниатюра (до 480 px): в корзине, оформлении, таблицах админки. */
+export function smallUrl(ref: string | undefined | null): string {
+  const u = imageUrl(ref);
+  return HAS_SMALL.test(u) ? u.replace(/\.webp$/, '-480.webp') : u;
+}
+
+/** srcset для карточки: браузер берёт 480 px на телефоне и в сетке, 1000 px — на широких экранах с ретиной. */
+export function srcsetFor(ref: string | undefined | null): string | undefined {
+  const u = imageUrl(ref);
+  return HAS_SMALL.test(u) ? `${u.replace(/\.webp$/, '-480.webp')} 480w, ${u} 1000w` : undefined;
+}
+
 /** Галерея: если у товара одно фото-заглушка — показываем 4 ракурса, как в макете. */
 export function galleryUrls(images: string[]): string[] {
   if (!images.length) return [imageUrl(null)];

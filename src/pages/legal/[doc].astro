@@ -25,8 +25,8 @@ const navDocs = buildDocs().filter((d) => d.slug !== 'offer-b2b' || doc.slug ===
       </aside>
       <article class="legal-body" style="padding-bottom: 24px;">
         <h1 class="t-h2 legal-h1" style="margin-bottom: 12px;">{doc.title}</h1>
-        <div class="row g16 sm muted d-only" style="margin-bottom: 8px;"><span>Редакция от [дата]</span><span>·</span><button class="link" type="button" onclick="window.print()">Скачать PDF</button></div>
-        <p class="sm muted m-only" style="margin-top: 8px;">Редакция от [дата] · <button class="link" type="button" onclick="window.print()">PDF</button></p>
+        <div class="row g16 sm muted d-only" style="margin-bottom: 8px;"><span>Редакция от [дата]</span><span>·</span><button class="link" type="button" data-print>Скачать PDF</button></div>
+        <p class="sm muted m-only" style="margin-top: 8px;">Редакция от [дата] · <button class="link" type="button" data-print>PDF</button></p>
         <label class="select m-only" style="width: 100%; justify-content: space-between; margin-top: 20px; height: 48px;"><span>Содержание</span><i class="ic ic-chev-d ic-18"></i>
           <select aria-label="Содержание" data-toc><option value="">Содержание</option>{doc.sections.map((s) => <option value={s.id}>{s.title}</option>)}</select>
         </label>

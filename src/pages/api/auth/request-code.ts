@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { json, fail, body, str, bool } from '../../../lib/http';
+import { json, fail, body, str, bool, clientIp } from '../../../lib/http';
 import { normPhone, isEmail } from '../../../lib/format';
 import { requestCode, userByEmail, normEmail, type Purpose } from '../../../lib/auth';
 import { validInn } from '../../../lib/inn';
@@ -7,7 +7,7 @@ import { ensureSession } from '../../../lib/session';
 import { config } from '../../../lib/config';
 
 // Шаг 1 входа/регистрации: проверяем поля и отправляем код на почту.
-export const POST: APIRoute = async ({ request, cookies, locals }) => {
+export const POST: APIRoute = async ({ request, cookies, locals, clientAddress }) => {
   const b = await body(request);
   const email = normEmail(str(b.email, 120));
   if (!isEmail(email)) return fail('Проверьте адрес почты', 400, { field: 'email' });
@@ -43,7 +43,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
 
   ensureSession(cookies, locals);
   try {
-    const r = await requestCode(email, purpose, payload);
+    const r = await requestCode(email, purpose, payload, clientIp(request, clientAddress));
     if (!r.ok) return json({ ok: false, error: r.error, wait: r.wait }, 429);
     return json({ ok: true, wait: r.wait, devCode: r.devCode });
   } catch (e: any) {

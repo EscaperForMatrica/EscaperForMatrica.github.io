@@ -20,6 +20,18 @@ export async function body(request: Request): Promise<Record<string, any>> {
   return {};
 }
 
+/** Адрес возврата после входа: только путь на этом сайте (без //host и /\\host — браузер считает их чужим доменом). */
+export const safeNext = (v: string, fallback: string) => (/^\/(?![\/\\])[^\\\s]*$/.test(v) ? v : fallback);
+
+/**
+ * IP посетителя за прокси хостинга (nginx → Apache → Passenger). nginx дописывает настоящий адрес в конец
+ * X-Forwarded-For; всё, что левее, и X-Real-IP присылает сам клиент — им не верим.
+ */
+export function clientIp(request: Request, fallback = ''): string {
+  const fwd = request.headers.get('x-forwarded-for')?.split(',').map((s) => s.trim()).filter(Boolean);
+  return (fwd?.at(-1) || fallback).slice(0, 64);
+}
+
 export const str = (v: unknown, max = 500) => String(v ?? '').trim().slice(0, max);
 export const int = (v: unknown, def = 0) => {
   const n = parseInt(String(v ?? ''), 10);

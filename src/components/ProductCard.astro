@@ -1,7 +1,7 @@
 ---
 import type { Product } from '../lib/catalog';
 import { cardMeta } from '../lib/catalog';
-import { imageUrl } from '../lib/images';
+import { imageUrl, srcsetFor } from '../lib/images';
 import { rub } from '../lib/format';
 
 interface Props {
@@ -14,14 +14,17 @@ interface Props {
   outLabel?: string;
   favRemove?: boolean;
   style?: string;
+  /** Карточка в первом экране: грузить сразу, а не лениво (lcp — самую первую с высоким приоритетом). */
+  eager?: boolean;
+  lcp?: boolean;
 }
-const { p, inCart = false, fav = false, compact = false, short = false, outLabel = 'Сообщить', favRemove = false, style } = Astro.props;
+const { p, inCart = false, fav = false, compact = false, short = false, outLabel = 'Сообщить', favRemove = false, style, eager = false, lcp = false } = Astro.props;
 const href = `/product/${p.slug}`;
 const out = !p.available;
 ---
 <article class={`pl-card ${out ? 'is-out' : ''}`} style={style}>
   <a href={href} class="pl-card__media" tabindex="-1" aria-hidden="true">
-    <img src={imageUrl(p.images[0])} alt={`${p.name}${p.variant ? ', ' + p.variant : ''}`} loading="lazy" width="240" height="240" />
+    <img src={imageUrl(p.images[0])} srcset={srcsetFor(p.images[0])} sizes={compact ? '168px' : '(max-width: 767px) 50vw, 300px'} alt={`${p.name}${p.variant ? ', ' + p.variant : ''}`} loading={eager || lcp ? 'eager' : 'lazy'} fetchpriority={lcp ? 'high' : undefined} decoding="async" width="240" height="240" />
     {out
       ? <span class="pl-badge pl-badge--neutral pl-card__tag">Нет в наличии</span>
       : !compact && p.discount > 0 && <span class="pl-badge pl-badge--discount pl-card__tag">−{p.discount}%</span>}

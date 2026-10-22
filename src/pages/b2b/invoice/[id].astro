@@ -28,7 +28,7 @@ const rows = [...items.map((i) => ({ name: `${i.name}, ${i.variant}`, qty: i.qty
     <div class="page doc">
       <div class="row between no-print" style="margin-bottom: 32px; gap: 12px; flex-wrap: wrap;">
         <a class="pl-btn pl-btn--text" href="/b2b/account" style="padding-left: 0;"><i class="ic ic-chev-l ic-20"></i>В кабинет компании</a>
-        <button class="pl-btn pl-btn--primary pl-btn--sm" type="button" onclick="window.print()"><i class="ic ic-upload ic-18" style="transform: rotate(180deg);"></i>Сохранить в PDF / печать</button>
+        <button class="pl-btn pl-btn--primary pl-btn--sm" type="button" data-print><i class="ic ic-upload ic-18" style="transform: rotate(180deg);"></i>Сохранить в PDF / печать</button>
       </div>
       <div class="row between" style="align-items: flex-start; margin-bottom: 24px;">
         <span class="logo"><img src="/images/logo.png" alt="" width="24" height="21" />PALADA</span>
@@ -65,5 +65,8 @@ const rows = [...items.map((i) => ({ name: `${i.name}, ${i.variant}`, qty: i.qty
         <span class="sm">Бухгалтер ______________ [ФИО]</span>
       </div>
     </div>
+    <script>
+      document.querySelector('[data-print]')?.addEventListener('click', () => window.print());
+    </script>
   </body>
 </html>

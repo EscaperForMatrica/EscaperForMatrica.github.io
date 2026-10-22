@@ -85,7 +85,7 @@ const activeName = cats.find((c) => c.slug === cat)?.name;
     {items.length ? (
       <>
         <div class="grid4">
-          {items.map((p) => <ProductCard p={p} inCart={inCart.has(p.id)} fav={favs.has(p.id)} short />)}
+          {items.map((p, i) => <ProductCard p={p} inCart={inCart.has(p.id)} fav={favs.has(p.id)} short eager={i < 4} lcp={i === 0} />)}
         </div>
         {items.length < total ? (
           <div class="col g12" style="align-items: center; margin-top: 48px;">

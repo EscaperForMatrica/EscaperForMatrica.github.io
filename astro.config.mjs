@@ -22,6 +22,8 @@ export default defineConfig({
   site: process.env.SITE_URL || undefined,
   trailingSlash: 'ignore',
   devToolbar: { enabled: false },
+  // CSS прямо в HTML: страница рисуется без отдельного блокирующего запроса стилей
+  build: { inlineStylesheets: 'always' },
   server: { port: 4500, host: true },
   security: {
     // В service worker нет заголовков Origin/Sec-Fetch-Site, а запросы и так не покидают браузер
@@ -38,5 +40,7 @@ export default defineConfig({
   vite: {
     // node:sqlite — встроенный модуль Node, не бандлим
     ssr: { external: ['node:sqlite'] },
+    // Скрипты — только файлами из /_astro: inline-скрипты запрещает Content-Security-Policy
+    build: { assetsInlineLimit: 0 },
   },
 });

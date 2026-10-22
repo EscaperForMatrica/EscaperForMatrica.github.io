@@ -1,7 +1,7 @@
 import { db } from './db';
 import type { Cart } from './cart';
 import { clearCart } from './cart';
-import { imageUrl } from './images';
+import { smallUrl } from './images';
 
 export type OrderStatus = 'pending' | 'paid' | 'assembling' | 'shipping' | 'pvz' | 'received' | 'cancelled';
 
@@ -80,7 +80,7 @@ export function getOrder(id: number): Order | undefined {
 export function orderItems(id: number): OrderItem[] {
   return db
     .all<OrderItem>('select oi.*, p.slug from order_items oi left join products p on p.id = oi.product_id where oi.order_id = ? order by oi.id', id)
-    .map((i) => ({ ...i, img: imageUrl(i.image) }));
+    .map((i) => ({ ...i, img: smallUrl(i.image) }));
 }
 
 export function orderEvents(id: number) {

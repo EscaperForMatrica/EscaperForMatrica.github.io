@@ -2,7 +2,7 @@
 import Shop from '../layouts/Shop.astro';
 import { getCart } from '../lib/cart';
 import { rub, goods } from '../lib/format';
-import { imageUrl } from '../lib/images';
+import { smallUrl } from '../lib/images';
 import { cardMeta } from '../lib/catalog';
 import { cartMode } from '../lib/session';
 
@@ -44,7 +44,7 @@ const title = empty ? 'Корзина' : `Корзина · ${goods(cart.count)}
             <div class="hr d-only"></div>
             {cart.lines.map((l) => (
               <div class={`line cart-line ${l.available ? '' : 'is-off'}`} data-line={l.product.id}>
-                <a class="line-img" href={`/product/${l.product.slug}`}><img src={imageUrl(l.product.images[0])} alt="" width="96" height="96" /></a>
+                <a class="line-img" href={`/product/${l.product.slug}`}><img src={smallUrl(l.product.images[0])} alt="" width="96" height="96" loading="lazy" decoding="async" /></a>
                 <div class="cl-body">
                   <div class="col g4 cl-info">
                     <a class="t-h4" href={`/product/${l.product.slug}`}>{l.product.name}</a>

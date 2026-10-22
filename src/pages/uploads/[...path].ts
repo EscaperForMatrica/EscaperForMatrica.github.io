@@ -13,7 +13,7 @@ export const GET: APIRoute = ({ params }) => {
   const ext = path.extname(file).toLowerCase();
   const type = TYPES[ext];
   if (!type) return new Response('Not found', { status: 404 });
-  const headers: Record<string, string> = { 'content-type': type, 'cache-control': 'public, max-age=604800' };
+  const headers: Record<string, string> = { 'content-type': type, 'cache-control': 'public, max-age=31536000, immutable' };
   if (ext === '.pdf') headers['content-disposition'] = `inline; filename="${path.basename(file)}"`;
   return new Response(fs.readFileSync(file), { headers });
 };

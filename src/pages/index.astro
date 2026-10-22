@@ -30,7 +30,7 @@ const isB2b = Astro.locals.user?.role === 'b2b';
           <div class="col g4"><span class="big-num" style="font-size: 40px;">до 40%</span><span class="sm muted">выгоднее маркетплейсов</span></div>
         </div>
       </div>
-      <div class="hero-photo"><img src="/images/hero-gels.webp" alt="Гели для стирки PALADA, канистры 5 литров" width="560" height="560" /></div>
+      <div class="hero-photo"><img src="/images/hero-gels.webp" srcset="/images/hero-gels-720.webp 720w, /images/hero-gels.webp 1200w" sizes="(max-width: 767px) calc(100vw - 32px), 560px" fetchpriority="high" decoding="async" alt="Гели для стирки PALADA, канистры 5 литров" width="560" height="560" /></div>
     </div>
   </section>
 
@@ -38,7 +38,7 @@ const isB2b = Astro.locals.user?.role === 'b2b';
     <span class="kicker"><i class="ic ic-drop ic-16"></i>Концентрированные гели</span>
     <h1 class="m-h1">Одна канистра — 165 стирок</h1>
     <p class="muted">Заказывайте напрямую с завода — до 40% выгоднее, чем на маркетплейсах.</p>
-    <div class="hero-photo"><img src="/images/hero-gels.webp" alt="Гели для стирки PALADA, канистры 5 литров" width="358" height="358" /></div>
+    <div class="hero-photo"><img src="/images/hero-gels.webp" srcset="/images/hero-gels-720.webp 720w, /images/hero-gels.webp 1200w" sizes="(max-width: 767px) calc(100vw - 32px), 560px" fetchpriority="high" decoding="async" alt="Гели для стирки PALADA, канистры 5 литров" width="358" height="358" /></div>
     <a class="pl-btn pl-btn--primary pl-btn--block" href="/catalog">В каталог<i class="ic ic-arrow-r ic-20"></i></a>
     <div class="row g32"><div class="col"><span class="big-num" style="font-size: 32px;">165</span><span class="xs muted">стирок из 5 литров</span></div><div class="col"><span class="big-num" style="font-size: 32px;">до 40%</span><span class="xs muted">выгоднее маркетплейсов</span></div></div>
   </section>

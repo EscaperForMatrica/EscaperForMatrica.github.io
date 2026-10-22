@@ -3,8 +3,8 @@ import path from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { config } from './config';
 
-/** Версия схемы: 2 — вход по email вместо телефона, таблица настроек; 3 — фото товаров; 4 — без демо-данных. */
-const SCHEMA_VERSION = 4;
+/** Версия схемы: 2 — вход по email вместо телефона, таблица настроек; 3 — фото товаров; 4 — без демо-данных; 5 — IP в кодах входа. */
+const SCHEMA_VERSION = 5;
 import { seed, syncCatalog, purgeDemoData } from './seed';
 
 const SCHEMA = `
@@ -86,10 +86,12 @@ create table if not exists otp_codes (
   payload text not null default '{}',
   attempts integer not null default 0,
   used integer not null default 0,
+  ip text not null default '',
   created_at text not null default (datetime('now')),
   expires_at text not null
 );
 create index if not exists otp_email on otp_codes(email, created_at);
+create index if not exists otp_ip on otp_codes(ip, created_at);
 
 create table if not exists settings (
   key text primary key,
@@ -269,6 +271,11 @@ class Db {
         `);
       });
       this.raw.exec('pragma foreign_keys = on');
+    }
+    if (version < 5) {
+      // v5: лимит кодов входа с одного IP
+      const cols = this.all<{ name: string }>('pragma table_info(otp_codes)').map((c) => c.name);
+      if (cols.length && !cols.includes('ip')) this.raw.exec(`alter table otp_codes add column ip text not null default ''`);
     }
   }
   all<T = Row>(sql: string, ...params: SQLInputValue[]): T[] {

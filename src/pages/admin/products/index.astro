@@ -2,7 +2,7 @@
 import Admin from '../../../layouts/Admin.astro';
 import { db } from '../../../lib/db';
 import { hydrate, categories, norm, ensureSearch } from '../../../lib/catalog';
-import { imageUrl } from '../../../lib/images';
+import { smallUrl } from '../../../lib/images';
 import { rub } from '../../../lib/format';
 import { adminUrl } from '../../../lib/config';
 
@@ -72,7 +72,7 @@ const to = Math.min(total, page * PER);
         {rows.map((p) => (
           <tr data-row={p.id}>
             <td><label class="pl-check" aria-label={`Выбрать ${p.name}`}><input type="checkbox" data-pick={p.id} /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span></label></td>
-            <td class="nm"><a class="row g12" href={adminUrl(`/products/${p.id}`)}><span class="tb-img"><img src={imageUrl(p.images[0])} alt="" width="44" height="44" /></span><span class="col"><b style="font-weight: 600;">{p.name}</b><span class="xs muted">{p.variant}</span></span></a></td>
+            <td class="nm"><a class="row g12" href={adminUrl(`/products/${p.id}`)}><span class="tb-img"><img src={smallUrl(p.images[0])} alt="" width="44" height="44" loading="lazy" decoding="async" /></span><span class="col"><b style="font-weight: 600;">{p.name}</b><span class="xs muted">{p.variant}</span></span></a></td>
             <td class="nw">{p.category_name || '—'}</td>
             <td class={p.sku ? '' : 'muted'}>{p.sku || '—'}</td>
             <td class={`num ${p.price === null ? 'muted' : ''}`}>{p.price === null ? 'не задана' : rub(p.price)}</td>

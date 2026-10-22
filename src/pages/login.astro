@@ -2,12 +2,13 @@
 import Shop from '../layouts/Shop.astro';
 import OtpStep from '../components/OtpStep.astro';
 import { config } from '../lib/config';
+import { safeNext } from '../lib/http';
 
 const next = Astro.url.searchParams.get('next') || '';
 const user = Astro.locals.user;
 // Покупатель, открывший ссылку админки, остаётся на форме входа: иначе админка и /login отправляют друг к другу по кругу
 const denied = Boolean(user && next.startsWith(config.adminPath) && user.role !== 'admin');
-if (user && !denied) return Astro.redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/account');
+if (user && !denied) return Astro.redirect(safeNext(next, '/account'));
 const email = Astro.url.searchParams.get('email') || '';
 ---
 <Shop title="Вход в личный кабинет" header="compact" tool="account" tab="account" noindex footer={false} fabs={false} mobileHeader={{ kind: 'title', title: 'Вход', back: '/' }}>

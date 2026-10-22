@@ -30,7 +30,10 @@ const SUBJECT: Record<Purpose, string> = {
   'change-email': 'Подтвердите новую почту в PALADA',
 };
 
-export async function requestCode(email: string, purpose: Purpose, payload: object = {}): Promise<CodeResult> {
+/** С одного IP — не больше 10 кодов в час на любые адреса: чтобы сайтом не засыпали письмами чужие ящики. */
+const MAX_PER_IP_HOUR = 10;
+
+export async function requestCode(email: string, purpose: Purpose, payload: object = {}, ip = ''): Promise<CodeResult> {
   const last = db.get<{ created_at: string }>('select created_at from otp_codes where email = ? order by id desc limit 1', email);
   if (last) {
     const ago = (Date.now() - new Date(last.created_at.replace(' ', 'T') + 'Z').getTime()) / 1000;
@@ -38,12 +41,16 @@ export async function requestCode(email: string, purpose: Purpose, payload: obje
   }
   const hourCount = db.value<number>(`select count(*) from otp_codes where email = ? and created_at > datetime('now', '-1 hour')`, email) || 0;
   if (hourCount >= MAX_PER_HOUR) return { ok: false, error: 'Слишком много попыток. Попробуйте через час.' };
+  if (ip) {
+    const ipCount = db.value<number>(`select count(*) from otp_codes where ip = ? and created_at > datetime('now', '-1 hour')`, ip) || 0;
+    if (ipCount >= MAX_PER_IP_HOUR) return { ok: false, error: 'Слишком много попыток. Попробуйте через час.' };
+  }
 
   const code = String(crypto.randomInt(0, 10000)).padStart(4, '0');
   db.run(`update otp_codes set used = 1 where email = ? and used = 0`, email);
   db.run(
-    `insert into otp_codes (email, code_hash, purpose, payload, expires_at) values (?, ?, ?, ?, datetime('now', '+${CODE_TTL_MIN} minutes'))`,
-    email, hash(email, code), purpose, JSON.stringify(payload),
+    `insert into otp_codes (email, code_hash, purpose, payload, ip, expires_at) values (?, ?, ?, ?, ?, datetime('now', '+${CODE_TTL_MIN} minutes'))`,
+    email, hash(email, code), purpose, JSON.stringify(payload), ip,
   );
   try {
     await sendMail({

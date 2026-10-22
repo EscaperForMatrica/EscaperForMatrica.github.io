@@ -2,7 +2,7 @@
 import Shop from '../../layouts/Shop.astro';
 import { categories, listProducts } from '../../lib/catalog';
 import { getCart, cartQtyMap } from '../../lib/cart';
-import { imageUrl } from '../../lib/images';
+import { imageUrl, smallUrl, srcsetFor } from '../../lib/images';
 import { rub, plural } from '../../lib/format';
 
 if (!Astro.locals.company) return Astro.redirect(Astro.locals.user ? '/b2b/register' : '/b2b');
@@ -63,7 +63,7 @@ const shortName = (p: (typeof products)[number]) => `${p.name}, ${p.variant.repl
               const b = Math.round(n / p.box_qty);
               return (
                 <tr>
-                  <td><a class="row g12" href={`/product/${p.slug}`}><span class="tb-img" style="width: 56px; height: 56px;"><img src={imageUrl(p.images[0])} alt="" width="56" height="56" /></span><span class="col"><b style="font-weight: 600;">{p.name}</b><span class="sm muted">{meta(p)}</span></span></a></td>
+                  <td><a class="row g12" href={`/product/${p.slug}`}><span class="tb-img" style="width: 56px; height: 56px;"><img src={smallUrl(p.images[0])} alt="" width="56" height="56" loading="lazy" decoding="async" /></span><span class="col"><b style="font-weight: 600;">{p.name}</b><span class="sm muted">{meta(p)}</span></span></a></td>
                   <td>{p.box_qty} шт.</td>
                   <td class="num muted" style="text-decoration: line-through;">{rub(p.price)}</td>
                   <td class="num"><b class="pl-price" style="font-size: 18px;">{rub(p.wholesale_price)}</b></td>
@@ -84,7 +84,7 @@ const shortName = (p: (typeof products)[number]) => `${p.name}, ${p.variant.repl
           const b = Math.round(n / p.box_qty);
           return (
             <article class={`pl-card ${p.available ? '' : 'is-out'}`}>
-              <a href={`/product/${p.slug}`} class="pl-card__media"><img src={imageUrl(p.images[0])} alt={p.name} loading="lazy" width="240" height="240" /><span class="pl-badge pl-badge--accent pl-card__tag">{p.box_qty} шт. в коробке</span></a>
+              <a href={`/product/${p.slug}`} class="pl-card__media"><img src={imageUrl(p.images[0])} srcset={srcsetFor(p.images[0])} sizes="(max-width: 767px) 50vw, 300px" alt={p.name} loading="lazy" decoding="async" width="240" height="240" /><span class="pl-badge pl-badge--accent pl-card__tag">{p.box_qty} шт. в коробке</span></a>
               <div class="pl-card__body">
                 <h3 class="pl-card__title"><a href={`/product/${p.slug}`}>{p.name}</a></h3>
                 <div class="pl-card__meta">{meta(p)} · розница <s>{rub(p.price)}</s></div>
@@ -107,7 +107,7 @@ const shortName = (p: (typeof products)[number]) => `${p.name}, ${p.variant.repl
         const b = Math.round(n / p.box_qty);
         return (
           <div class="line" style="grid-template-columns: 72px 1fr;">
-            <a class="line-img" style="width: 72px; height: 72px;" href={`/product/${p.slug}`}><img src={imageUrl(p.images[0])} alt="" width="72" height="72" /></a>
+            <a class="line-img" style="width: 72px; height: 72px;" href={`/product/${p.slug}`}><img src={smallUrl(p.images[0])} alt="" width="72" height="72" loading="lazy" decoding="async" /></a>
             <div class="col g8">
               <div class="col"><b class="t-h4" style="font-size: 15px;">{shortName(p)}</b><span class="xs muted">в коробке {p.box_qty} шт. · розница <s>{rub(p.price)}</s></span></div>
               <div class="row between">

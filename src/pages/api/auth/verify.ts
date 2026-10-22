@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { db } from '../../../lib/db';
-import { json, fail, body, str } from '../../../lib/http';
+import { json, fail, body, str, safeNext } from '../../../lib/http';
 import { verifyCode, userByEmail, roleForEmail, normEmail } from '../../../lib/auth';
 import { lookupInn } from '../../../lib/inn';
 import { signIn } from '../../../lib/session';
@@ -58,8 +58,6 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
 
   signIn(cookies, locals, user.id);
   const fresh = db.get<any>('select role, company_id from users where id = ?', user.id);
-  if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//')) {
-    redirect = fresh.role === 'admin' ? config.adminPath : fresh.company_id ? '/b2b/catalog' : '/account';
-  }
+  redirect = safeNext(redirect, fresh.role === 'admin' ? config.adminPath : fresh.company_id ? '/b2b/catalog' : '/account');
   return json({ ok: true, redirect });
 };

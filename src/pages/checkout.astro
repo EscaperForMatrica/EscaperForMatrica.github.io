@@ -5,7 +5,7 @@ import PayModal from '../components/PayModal.astro';
 import { getCart } from '../lib/cart';
 import { db } from '../lib/db';
 import { rub, phoneInput } from '../lib/format';
-import { imageUrl } from '../lib/images';
+import { smallUrl } from '../lib/images';
 import { cartMode } from '../lib/session';
 import { OZON_MIN_PRICE } from '../lib/delivery';
 
@@ -77,7 +77,7 @@ const thumbs = cart.lines.filter((l) => l.available).slice(0, 4);
 
       <aside class="box col sticky-side d-only" style="padding: 28px; gap: 20px;">
         <h2 class="t-h3">Ваш заказ</h2>
-        <div class="row between"><div class="mini-imgs">{thumbs.map((l) => <span><img src={imageUrl(l.product.images[0])} alt="" width="56" height="56" /></span>)}</div><a class="sm link" href="/cart">Изменить</a></div>
+        <div class="row between"><div class="mini-imgs">{thumbs.map((l) => <span><img src={smallUrl(l.product.images[0])} alt="" width="56" height="56" decoding="async" /></span>)}</div><a class="sm link" href="/cart">Изменить</a></div>
         {cart.discount > 0 && <div class="pl-promo-applied" style="font-size: 14px;"><span class="row g8"><i class="ic ic-check ic-18"></i><b>{cart.promoCode}</b> — {cart.promoLabel}</span></div>}
         {cart.promoError && <div class="pl-note pl-note--error"><i class="ic ic-alert"></i><span>Промокод {cart.promoCode} не применён: {cart.promoError.toLowerCase()}.</span></div>}
         <div class="col g12">

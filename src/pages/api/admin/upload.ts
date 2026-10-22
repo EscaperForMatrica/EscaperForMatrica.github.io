@@ -25,7 +25,18 @@ export const POST: APIRoute = async ({ request }) => {
   if (!okSig) return fail('Файл повреждён или имеет другой формат');
   const dir = path.join(config.uploadsDir, kind === 'doc' ? 'docs' : 'products');
   fs.mkdirSync(dir, { recursive: true });
-  const name = crypto.randomBytes(10).toString('hex') + ext;
+  const id = crypto.randomBytes(10).toString('hex');
+  if (kind === 'img') {
+    // Фото с телефона весят мегабайты: приводим к WebP до 1000 px и делаем копию 480 px для карточек
+    const sharp = await import('sharp').then((m) => m.default).catch(() => null);
+    if (sharp) {
+      const src = sharp(buf, { failOn: 'error' }).rotate();
+      await src.clone().resize(1000, 1000, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, `${id}.webp`));
+      await src.clone().resize(480, 480, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toFile(path.join(dir, `${id}-480.webp`));
+      return json({ ok: true, url: `/uploads/products/${id}.webp` });
+    }
+  }
+  const name = id + ext;
   fs.writeFileSync(path.join(dir, name), buf);
   return json({ ok: true, url: `/uploads/${kind === 'doc' ? 'docs' : 'products'}/${name}` });
 };
