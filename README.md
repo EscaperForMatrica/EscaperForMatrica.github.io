@@ -60,12 +60,10 @@ GitHub Pages умеет отдавать только статические ф�
 
 Выкладка новой версии — одной командой (нужен SSH-доступ к хостингу): `DEPLOY_HOST=<ssh-хост> sh scripts/deploy.sh`. Скрипт собирает сайт, заливает `dist/`, ставит зависимости и перезапускает приложение (`tmp/restart.txt`).
 
-Адрес магазина — **palada.shop** (зарегистрирован в REG.RU). Чтобы сайт заработал:
-1. В cPanel добавить домен `palada.shop` с отдельным корневым каталогом `palada.shop` и положить туда `.htaccess` с теми же строками, что в `~/palada.su/.htaccess`.
-   В REG.RU поменять DNS-серверы домена на `ns3.lite-host.in` и `ns4.lite-host.su` — записи зоны дальше ведёт cPanel. Старый palada.su (у ihc.ru) можно позже перенаправить на palada.shop.
-2. После обновления DNS запустить AutoSSL в cPanel («SSL/TLS Status» → «Run AutoSSL») и включить переадресацию на HTTPS.
-3. Добавить в `~/palada-app/.env` строку `SMTP_PASS=…` — пароль для внешних приложений ящика arm2730@mail.ru (настройки → «Безопасность» → «Пароли для внешних приложений») — и перезапустить приложение: `touch ~/palada-app/tmp/restart.txt`.
-4. Войти в `/admin` с arm2730@mail.ru — код придёт на почту. В «Настройках» нажать «Отправить тестовое письмо».
+Адрес магазина — **https://palada.shop** (домен в REG.RU, DNS-серверы `ns3.lite-host.in` и `ns4.lite-host.su`, записи зоны ведёт cPanel). Сертификат Let's Encrypt для palada.shop и www.palada.shop выпускает и продлевает AutoSSL. В `~/palada.shop/.htaccess`, кроме подключения приложения, — переадресация всего на `https://palada.shop` без www (кроме `/.well-known/` для проверок AutoSSL). Старый palada.su (у ihc.ru) можно позже перенаправить на palada.shop.
+
+Чтобы уходили письма, в `~/palada-app/.env` нужна строка `SMTP_PASS=…` — пароль для внешних приложений ящика arm2730@mail.ru (настройки → «Безопасность» → «Пароли для внешних приложений») — и перезапустить приложение: `touch ~/palada-app/tmp/restart.txt`.
+Затем войти в `/admin` с arm2730@mail.ru — код придёт на почту. В «Настройках» нажать «Отправить тестовое письмо».
 
 Потом в `.env` добавляются ключи ЮKassa (`YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`) и DaData (`DADATA_API_KEY`). Пока ключей ЮKassa нет, оформление честно сообщает, что онлайн-оплата не подключена, и предлагает написать в WhatsApp.
 
