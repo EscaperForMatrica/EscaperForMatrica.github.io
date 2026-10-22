@@ -7,7 +7,7 @@ import '../styles/site.css';
 import Header, { type HeaderKind } from '../components/Header.astro';
 import MobileHeader, { type MobileHeaderSpec } from '../components/MobileHeader.astro';
 import Footer from '../components/Footer.astro';
-import { shop, config } from '../lib/config';
+import { shop, config, adminUrl } from '../lib/config';
 import { hasFont } from '../lib/fonts';
 import { cartCount } from '../lib/cart';
 import { cartMode } from '../lib/session';
@@ -139,7 +139,7 @@ const pageCls = ['page', pageClass, showTab ? 'has-tab' : '', showCookie ? 'cook
             <a class="side-a" href="/blog"><i class="ic ic-doc ic-20"></i>Блог</a>
             <a class="side-a" href="/favorites"><i class="ic ic-heart ic-20"></i>Избранное</a>
             <a class="side-a" href={user ? '/account' : '/login'}><i class="ic ic-user ic-20"></i>{user ? 'Личный кабинет' : 'Войти'}</a>
-            {user?.role === 'admin' && <a class="side-a" href="/admin"><i class="ic ic-edit ic-20"></i>Админка</a>}
+            {user?.role === 'admin' && <a class="side-a" href={adminUrl()}><i class="ic ic-edit ic-20"></i>Админка</a>}
           </nav>
           <div class="hr"></div>
           <div class="col g8 sm"><a class="ftr-tel" href={`tel:${shop.wholesaleTel}`}>{shop.wholesalePhone}</a><span class="muted">оптовые заказы</span><a class="ftr-tel" href={`tel:${shop.supportTel}`}>{shop.supportPhone}</a><span class="muted">WhatsApp и звонки</span></div>

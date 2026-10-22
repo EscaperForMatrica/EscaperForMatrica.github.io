@@ -17,14 +17,19 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   }
 
   const path = ctx.url.pathname;
-  if (path.startsWith('/admin') || path.startsWith('/api/admin')) {
+  const under = (base: string) => path === base || path.startsWith(base + '/');
+  const A = config.adminPath;
+  // Страницы админки лежат в /admin, а открываются по секретному адресу A: снаружи /admin не существует
+  if (A !== '/admin' && under('/admin')) return next('/404');
+  const isAdmin = under(A);
+  if (isAdmin || path.startsWith('/api/admin')) {
     if (s.user?.role !== 'admin') {
       if (path.startsWith('/api/')) return new Response(JSON.stringify({ error: 'Нет доступа' }), { status: 403, headers: { 'content-type': 'application/json' } });
       return ctx.redirect(`/login?next=${encodeURIComponent(path + ctx.url.search)}`);
     }
   }
-  const res = await next();
-  if (path.startsWith('/api/') || path.startsWith('/admin') || path.startsWith('/account') || path.startsWith('/checkout')) {
+  const res = await (isAdmin && A !== '/admin' ? next(new URL('/admin' + path.slice(A.length) + ctx.url.search, ctx.url)) : next());
+  if (path.startsWith('/api/') || isAdmin || path.startsWith('/account') || path.startsWith('/checkout')) {
     res.headers.set('cache-control', 'no-store');
   }
   return res;

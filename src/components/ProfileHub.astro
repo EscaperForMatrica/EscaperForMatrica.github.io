@@ -3,6 +3,7 @@
 import { displayName, phoneInput, dateDots } from '../lib/format';
 import { orderCounts } from '../lib/orders';
 import { favCount } from '../lib/favorites';
+import { adminUrl } from '../lib/config';
 
 interface Props {
   desktop?: boolean;
@@ -42,7 +43,7 @@ const saved = Astro.url.searchParams.get('saved');
   <div class="box" style="padding: 4px 0;">
     <a class="side-a" href="/account/orders"><i class="ic ic-box ic-20"></i>Мои заказы{counts.all > 0 && <span class="n">{counts.all}</span>}<i class="ic ic-chev-r ic-18 muted" style={counts.all > 0 ? undefined : 'margin-left: auto;'}></i></a>
     <a class="side-a" href="/favorites"><i class="ic ic-heart ic-20"></i>Избранное{favs > 0 && <span class="n">{favs}</span>}<i class="ic ic-chev-r ic-18 muted" style={favs > 0 ? undefined : 'margin-left: auto;'}></i></a>
-    {u.role === 'admin' && <a class="side-a" href="/admin"><i class="ic ic-edit ic-20"></i>Админка<i class="ic ic-chev-r ic-18 muted" style="margin-left: auto;"></i></a>}
+    {u.role === 'admin' && <a class="side-a" href={adminUrl()}><i class="ic ic-edit ic-20"></i>Админка<i class="ic ic-chev-r ic-18 muted" style="margin-left: auto;"></i></a>}
   </div>
   <form class="box col g16" style="padding: 20px;" data-profile-form novalidate>
     <h2 class="t-h3">Профиль</h2>

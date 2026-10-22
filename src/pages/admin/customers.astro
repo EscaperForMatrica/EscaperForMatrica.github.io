@@ -3,7 +3,7 @@ import Admin from '../../layouts/Admin.astro';
 import { db } from '../../lib/db';
 import { STATUS, type Order } from '../../lib/orders';
 import { rub, num, phoneInput, dateDots, dayMonth, shortDateTime } from '../../lib/format';
-import { config } from '../../lib/config';
+import { config, adminUrl } from '../../lib/config';
 
 const sp = Astro.url.searchParams;
 const q = (sp.get('q') || '').trim();
@@ -43,7 +43,7 @@ const link = (patch: Record<string, string | null>) => {
   for (const [k, v] of Object.entries(patch)) v === null ? u.delete(k) : u.set(k, v);
   if (!('page' in patch) && !('id' in patch)) u.delete('page');
   const s = u.toString();
-  return '/admin/customers' + (s ? `?${s}` : '');
+  return adminUrl('/customers') + (s ? `?${s}` : '');
 };
 const open = openId ? db.get<any>(`select u.*, c.name as company_name, c.inn as company_inn, ${STAT} from users u left join companies c on c.id = u.company_id where u.id = ?`, openId) : undefined;
 const openOrders = open ? db.all<Order>(`select * from orders where user_id = ? order by created_at desc, id desc limit 50`, open.id) : [];
@@ -52,7 +52,7 @@ const enforced = (email: string) => config.adminEmails.includes(email);
 <Admin title="Клиенты" active="customers">
   <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Клиенты</h1><span class="muted">{counts.all}</span></div>
   <div class="adm-top">
-    <form action="/admin/customers" method="get" style="position: relative; width: 320px; max-width: 100%;" role="search">
+    <form action={adminUrl('/customers')} method="get" style="position: relative; width: 320px; max-width: 100%;" role="search">
       {f !== 'all' && <input type="hidden" name="f" value={f} />}
       <i class="ic ic-search ic-18 muted" style="position: absolute; left: 12px; top: 11px;"></i><input class="pl-input" name="q" value={q} style="height: 40px; padding-left: 38px; font-size: 14px;" placeholder="Имя, почта или телефон" aria-label="Поиск клиента" />
     </form>
@@ -102,7 +102,7 @@ const enforced = (email: string) => config.adminEmails.includes(email);
         <div class="col g8 box-line" style="padding: 16px;">
           <div class="sum-row sm"><span class="muted">Email</span><a class="link" href={`mailto:${open.email}`}>{open.email}</a></div>
           <div class="sum-row sm"><span class="muted">Телефон</span>{open.phone ? <a class="link" href={`tel:+${open.phone}`}>{phoneInput(open.phone)}</a> : <span class="muted">не указан</span>}</div>
-          {open.company_id && <div class="sum-row sm"><span class="muted">Компания</span><a class="link" href={`/admin/companies?id=${open.company_id}`}>{open.company_name} · ИНН {open.company_inn}</a></div>}
+          {open.company_id && <div class="sum-row sm"><span class="muted">Компания</span><a class="link" href={adminUrl(`/companies?id=${open.company_id}`)}>{open.company_name} · ИНН {open.company_inn}</a></div>}
           {open.position && <div class="sum-row sm"><span class="muted">Должность</span><span>{open.position}</span></div>}
           <div class="sum-row sm"><span class="muted">Рассылка</span><span>{open.newsletter ? 'подписан' : 'нет'}</span></div>
           <div class="sum-row sm"><span class="muted">Согласие на обработку ПДн</span><span>{open.pd_consent_at ? `дано ${dateDots(open.pd_consent_at)}` : 'отозвано'}</span></div>
@@ -110,7 +110,7 @@ const enforced = (email: string) => config.adminEmails.includes(email);
         <div class="col g8">
           <span class="pl-field__label">Заказы · {openOrders.length}</span>
           {openOrders.length ? openOrders.map((o) => (
-            <a class="row between g12 box-line" href={`/admin/orders?m=&id=${o.id}`} style="padding: 12px 14px;">
+            <a class="row between g12 box-line" href={adminUrl(`/orders?m=&id=${o.id}`)} style="padding: 12px 14px;">
               <span class="col"><b style="font-weight: 600;">№ {o.id}</b><span class="xs muted">{shortDateTime(o.created_at)} · {o.delivery_type === 'wb' ? 'WB' : 'Ozon'}</span></span>
               <span class="row g12"><span class={`pl-badge ${STATUS[o.status].cls}`} style="height: 22px;"><i class={`ic ic-${STATUS[o.status].icon} ic-16`}></i>{STATUS[o.status].label}</span><b class="nw">{rub(o.total)}</b></span>
             </a>
@@ -122,7 +122,7 @@ const enforced = (email: string) => config.adminEmails.includes(email);
           {enforced(open.email)
             ? <p class="sm muted">Администратор задан в настройках сервера (ADMIN_EMAILS).</p>
             : <button class="pl-btn pl-btn--secondary pl-btn--sm" type="button" style="align-self: flex-start;" data-make-admin={open.id}><i class="ic ic-shield ic-18"></i>Сделать администратором</button>}
-          <span class="xs muted">Администратор входит в /admin по коду, который приходит на {open.email}.</span>
+          <span class="xs muted">Администратор входит по ссылке админки {(config.siteUrl || Astro.url.origin) + adminUrl()} — код приходит на {open.email}.</span>
         </div>
       </aside>
     </Fragment>
@@ -139,7 +139,7 @@ const enforced = (email: string) => config.adminEmails.includes(email);
       if (!confirm('Дать этому клиенту полный доступ к админке?')) return;
       const r = await api('/api/admin/team', { action: 'grant', id: Number(mk.dataset.makeAdmin) });
       if (!r.ok) return toast(r.error, 'error');
-      location.href = '/admin/team';
+      location.href = `${document.body.dataset.admin}/team`;
     }
   });
   document.addEventListener('keydown', (e) => {

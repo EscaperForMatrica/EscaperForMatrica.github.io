@@ -3,6 +3,7 @@ import Admin from '../../layouts/Admin.astro';
 import { db } from '../../lib/db';
 import { STATUS, FLOW, orderItems, getOrder, documentsFor, DOC_LABEL, PAY_METHOD, type Order } from '../../lib/orders';
 import { rub, shortDateTime, shortName, phoneHalf, phoneInput, humanDateTime, monthName, dayMonth } from '../../lib/format';
+import { adminUrl } from '../../lib/config';
 
 const sp = Astro.url.searchParams;
 const q = (sp.get('q') || '').trim();
@@ -53,7 +54,7 @@ const link = (patch: Record<string, string | null>) => {
   const u = new URLSearchParams(sp);
   for (const [k, v] of Object.entries(patch)) v === null ? u.delete(k) : u.set(k, v);
   const s = u.toString();
-  return '/admin/orders' + (s ? `?${s}` : '');
+  return adminUrl('/orders') + (s ? `?${s}` : '');
 };
 const open = openId ? getOrder(openId) : undefined;
 const openItems = open ? orderItems(open.id) : [];
@@ -71,7 +72,7 @@ const csv = `/api/admin/orders.csv${Astro.url.search}`;
     <div class="kpi"><span class="sm muted">Выручка за {monthName(now.getMonth()).toLowerCase()}</span><b>{rub(kpi.revenue)}</b></div>
   </div>
   <div class="adm-top">
-    <form action="/admin/orders" method="get" style="position: relative; width: 280px; max-width: 100%;" role="search">
+    <form action={adminUrl('/orders')} method="get" style="position: relative; width: 280px; max-width: 100%;" role="search">
       {dt && <input type="hidden" name="d" value={dt} />}{st && <input type="hidden" name="s" value={st} />}<input type="hidden" name="m" value={month} />
       <i class="ic ic-search ic-18 muted" style="position: absolute; left: 12px; top: 11px;"></i><input class="pl-input" name="q" value={q} style="height: 40px; padding-left: 38px; font-size: 14px;" placeholder="№ заказа, телефон, ФИО" aria-label="Поиск заказа" />
     </form>

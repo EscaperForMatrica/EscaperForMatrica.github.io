@@ -2,6 +2,7 @@
 import Admin from '../../../layouts/Admin.astro';
 import { productById, categories } from '../../../lib/catalog';
 import { imageUrl } from '../../../lib/images';
+import { adminUrl } from '../../../lib/config';
 
 const isNew = Astro.params.id === 'new';
 const p = isNew ? undefined : productById(Number(Astro.params.id));
@@ -16,13 +17,13 @@ const title = isNew ? 'Новый товар' : p!.name;
 <Admin title={title} active="products">
   <form class="col g24" data-product-form data-id={p?.id || ''} novalidate>
     <div class="adm-top">
-      <a class="act" href="/admin/products" aria-label="Назад к товарам"><i class="ic ic-chev-l ic-20"></i></a>
+      <a class="act" href={adminUrl('/products')} aria-label="Назад к товарам"><i class="ic ic-chev-l ic-20"></i></a>
       <h1 class="t-h3" style="font-size: 26px;">{title}</h1>
       {!isNew && (p!.visible ? <span class="pl-badge pl-badge--accent">На сайте</span> : <span class="pl-badge pl-badge--neutral">Скрыт</span>)}
       {!isNew && p!.visible === 1 && p!.price !== null && <a class="sm link" href={`/product/${p!.slug}`} target="_blank">Открыть на сайте</a>}
       <span class="grow"></span>
       {!isNew && <button class="pl-btn pl-btn--text" type="button" style="color: var(--error);" data-delete><i class="ic ic-trash ic-18"></i>Удалить</button>}
-      <a class="pl-btn pl-btn--secondary pl-btn--sm" href="/admin/products">Отмена</a>
+      <a class="pl-btn pl-btn--secondary pl-btn--sm" href={adminUrl('/products')}>Отмена</a>
       <button class="pl-btn pl-btn--primary pl-btn--sm" type="submit">Сохранить</button>
     </div>
     <div class="pl-note pl-note--error" hidden data-form-error><i class="ic ic-alert"></i><span></span></div>
@@ -153,7 +154,7 @@ const title = isNew ? 'Новый товар' : p!.name;
     if (t.closest('[data-delete]')) {
       if (!confirm('Удалить товар? Это нельзя отменить.')) return;
       const r = await api('/api/admin/products', { action: 'delete', ids: [Number(id)] });
-      if (r.ok) location.href = '/admin/products';
+      if (r.ok) location.href = `${document.body.dataset.admin}/products`;
       else toast(r.error, 'error');
     }
   });
@@ -187,7 +188,7 @@ const title = isNew ? 'Новый товар' : p!.name;
     }
     err.hidden = true;
     toast('Сохранено');
-    if (!id) location.href = `/admin/products/${r.id}`;
+    if (!id) location.href = `${document.body.dataset.admin}/products/${r.id}`;
     else setTimeout(() => location.reload(), 500);
   });
 </script>

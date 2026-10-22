@@ -3,6 +3,7 @@ import Admin from '../../layouts/Admin.astro';
 import { db } from '../../lib/db';
 import { promoState, promoDateRange, type Promo } from '../../lib/promo';
 import { rub, num } from '../../lib/format';
+import { adminUrl } from '../../lib/config';
 
 const f = Astro.url.searchParams.get('f') || 'all';
 const editId = Number(Astro.url.searchParams.get('edit')) || 0;
@@ -23,7 +24,7 @@ const STATE: Record<string, [string, string]> = {
   <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Промокоды</h1></div>
   <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
     <form class="box-line col g16" style="flex: 1 1 380px; max-width: 420px;" data-promo-form data-id={edit?.id || ''} novalidate>
-      <div class="row between"><h2 class="t-h4">{edit ? `Промокод ${edit.code}` : 'Новый промокод'}</h2>{edit && <a class="sm link" href="/admin/promos">Создать новый</a>}</div>
+      <div class="row between"><h2 class="t-h4">{edit ? `Промокод ${edit.code}` : 'Новый промокод'}</h2>{edit && <a class="sm link" href={adminUrl('/promos')}>Создать новый</a>}</div>
       <div class="pl-field"><label class="pl-field__label" for="pc-code">Код</label><div class="pl-promo"><input class="pl-input" id="pc-code" name="code" value={p.code} placeholder="OSEN15" autocomplete="off" /><button class="pl-btn pl-btn--secondary" type="button" aria-label="Сгенерировать" data-gen><i class="ic ic-refresh ic-18"></i></button></div><span class="pl-field__hint">Латиница и цифры, покупатель вводит его в корзине</span></div>
       <div class="col g8"><span class="pl-field__label">Тип скидки</span><div class="seg" role="radiogroup"><label><input type="radio" name="kind" value="percent" checked={p.kind === 'percent'} />Процент</label><label><input type="radio" name="kind" value="fixed" checked={p.kind === 'fixed'} />Сумма, ₽</label></div></div>
       <div class="grid2" style="gap: 16px;">
@@ -39,7 +40,7 @@ const STATE: Record<string, [string, string]> = {
       <button class="pl-btn pl-btn--primary pl-btn--block" type="submit">{edit ? 'Сохранить' : 'Создать промокод'}</button>
     </form>
     <div class="col g16" style="flex: 999 1 520px; min-width: 0;">
-      <div class="chips"><a class={`chip ${f === 'all' ? 'on' : ''}`} href="/admin/promos">Все</a><a class={`chip ${f === 'active' ? 'on' : ''}`} href="/admin/promos?f=active">Активные <span class="n">{active.length}</span></a><a class={`chip ${f === 'done' ? 'on' : ''}`} href="/admin/promos?f=done">Завершённые <span class="n">{done.length}</span></a></div>
+      <div class="chips"><a class={`chip ${f === 'all' ? 'on' : ''}`} href={adminUrl('/promos')}>Все</a><a class={`chip ${f === 'active' ? 'on' : ''}`} href={adminUrl('/promos?f=active')}>Активные <span class="n">{active.length}</span></a><a class={`chip ${f === 'done' ? 'on' : ''}`} href={adminUrl('/promos?f=done')}>Завершённые <span class="n">{done.length}</span></a></div>
       <div class="tbl-box">
         <table class="tbl">
           <thead><tr><th>Код</th><th>Скидка</th><th>Мин. сумма</th><th>Срок</th><th class="num">Применений</th><th>Статус</th><th></th></tr></thead>
@@ -55,7 +56,7 @@ const STATE: Record<string, [string, string]> = {
                   <td>{promoDateRange(x)}</td>
                   <td class="num">{x.usage_limit && !finished ? <span class="col" style="align-items: flex-end; gap: 4px;"><span>{num(x.used)} / {num(x.usage_limit)}</span><span class="bar"><span style={`width: ${Math.min(100, Math.round((x.used / x.usage_limit) * 100))}%;`}></span></span></span> : `${num(x.used)} / ${x.usage_limit ? num(x.usage_limit) : '∞'}`}</td>
                   <td><span class={`pl-badge ${STATE[st][0]}`}>{st === 'active' && <span class="pl-badge__dot"></span>}{STATE[st][1]}</span></td>
-                  <td><span class="row g4"><a class="act" href={`/admin/promos?edit=${x.id}`} aria-label="Редактировать"><i class="ic ic-edit ic-18"></i></a><button class="act" type="button" aria-label="Удалить" data-del={x.id} data-code={x.code}><i class="ic ic-trash ic-18"></i></button></span></td>
+                  <td><span class="row g4"><a class="act" href={adminUrl(`/promos?edit=${x.id}`)} aria-label="Редактировать"><i class="ic ic-edit ic-18"></i></a><button class="act" type="button" aria-label="Удалить" data-del={x.id} data-code={x.code}><i class="ic ic-trash ic-18"></i></button></span></td>
                 </tr>
               );
             })}
@@ -103,7 +104,7 @@ const STATE: Record<string, [string, string]> = {
       err.querySelector('span')!.textContent = r.error;
       return;
     }
-    location.href = '/admin/promos';
+    location.href = `${document.body.dataset.admin}/promos`;
   });
   document.addEventListener('click', async (e) => {
     const d = (e.target as HTMLElement).closest<HTMLElement>('[data-del]');

@@ -1,7 +1,7 @@
 ---
 import Admin from '../../layouts/Admin.astro';
 import { db } from '../../lib/db';
-import { config } from '../../lib/config';
+import { config, adminUrl } from '../../lib/config';
 import { dateDots } from '../../lib/format';
 
 const admins = db.all<any>(`select * from users where role = 'admin' order by created_at, id`);
@@ -32,7 +32,7 @@ const meId = Astro.locals.user?.id;
       <div class="pl-field"><label class="pl-field__label" for="a-name">Имя <i>(необязательно)</i></label><input class="pl-input" id="a-name" name="name" placeholder="Например, Ольга — менеджер" /></div>
       <span class="pl-field__error" hidden data-err><i class="ic ic-alert ic-16"></i><span></span></span>
       <button class="pl-btn pl-btn--primary pl-btn--block" type="submit"><i class="ic ic-plus ic-18"></i>Добавить</button>
-      <div class="pl-note"><i class="ic ic-info"></i><span>Пароль не нужен: сотрудник открывает <b>/login</b>, вводит эту почту и код из письма — и попадает в админку. У администратора полный доступ: товары, заказы, клиенты и настройки.</span></div>
+      <div class="pl-note"><i class="ic ic-info"></i><span>Пароль не нужен: сотрудник открывает ссылку админки <b>{(config.siteUrl || Astro.url.origin) + adminUrl()}</b>, вводит эту почту и код из письма — и попадает в админку. Ссылку не публикуйте: покупатели её не видят. У администратора полный доступ: товары, заказы, клиенты и настройки.</span></div>
     </form>
   </div>
 </Admin>

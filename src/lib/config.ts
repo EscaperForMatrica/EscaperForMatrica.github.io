@@ -21,10 +21,13 @@ export const isProd = import.meta.env.PROD || process.env.NODE_ENV === 'producti
 const OWNER_EMAIL = 'arm2730@mail.ru';
 
 const dbPath = env('DB_PATH') || path.resolve(process.cwd(), 'data/palada.db');
+// Адрес админки. На боевом сайте он секретный (ADMIN_PATH в .env сервера), а /admin для всех — «страница не найдена»
+const adminPath = '/' + (env('ADMIN_PATH') || 'admin').replace(/^\/+|\/+$/g, '');
 
 export const config = {
   siteUrl: env('SITE_URL').replace(/\/$/, ''),
   dbPath,
+  adminPath,
   // Загруженные фото и документы — рядом с базой, на том же постоянном диске
   uploadsDir: path.resolve(env('UPLOADS_DIR') || path.join(path.dirname(dbPath), 'uploads')),
   adminEmails: (env('ADMIN_EMAILS') || OWNER_EMAIL).split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
@@ -70,6 +73,9 @@ export const shop = {
 };
 
 export type ShopInfo = typeof shop;
+
+/** Ссылка внутри админки: adminUrl('/orders') → /<секретный адрес>/orders. */
+export const adminUrl = (p = '') => adminPath + p;
 
 export const paymentsLive = () => Boolean(config.yookassa.shopId && config.yookassa.secretKey);
 export const mailLive = () => Boolean(config.smtp.host && config.smtp.from);

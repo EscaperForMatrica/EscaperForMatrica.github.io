@@ -1,6 +1,7 @@
 ---
 import Admin from '../../layouts/Admin.astro';
 import { db } from '../../lib/db';
+import { adminUrl } from '../../lib/config';
 
 const cats = db.all<any>(`select c.*, (select count(*) from products p where p.category_id = c.id) as total,
   (select count(*) from products p where p.category_id = c.id and p.visible = 1 and p.price is not null) as visible
@@ -17,7 +18,7 @@ const cats = db.all<any>(`select c.*, (select count(*) from products p where p.c
             <tr data-cat={c.id}>
               <td><span class="row g4"><button class="act" type="button" aria-label="Выше" data-move="-1" disabled={i === 0} style={i === 0 ? 'opacity: .3;' : undefined}><i class="ic ic-chev-l ic-18" style="transform: rotate(90deg);"></i></button><button class="act" type="button" aria-label="Ниже" data-move="1" disabled={i === cats.length - 1} style={i === cats.length - 1 ? 'opacity: .3;' : undefined}><i class="ic ic-chev-r ic-18" style="transform: rotate(90deg);"></i></button></span></td>
               <td><form class="row g8" data-rename><input class="pl-input" name="name" value={c.name} style="height: 40px; font-size: 14px; max-width: 280px;" aria-label="Название категории" /><button class="pl-btn pl-btn--secondary pl-btn--sm" type="submit" hidden>Сохранить</button></form><span class="xs muted">/catalog?cat={c.slug}</span></td>
-              <td class="num">{c.total ? <a class="link" href={`/admin/products?cat=${c.slug}`}>{c.total}</a> : <span class="muted">0</span>}</td>
+              <td class="num">{c.total ? <a class="link" href={adminUrl(`/products?cat=${c.slug}`)}>{c.total}</a> : <span class="muted">0</span>}</td>
               <td class="num">{c.visible}</td>
               <td><button class="act" type="button" aria-label="Удалить" data-del title={c.total ? 'Сначала перенесите товары' : 'Удалить'}><i class="ic ic-trash ic-18"></i></button></td>
             </tr>

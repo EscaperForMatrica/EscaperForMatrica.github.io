@@ -4,6 +4,7 @@ import { db } from '../../lib/db';
 import { STATUS, DOC_LABEL, type Order } from '../../lib/orders';
 import { rub, num, phoneInput, dateDots, shortDateTime } from '../../lib/format';
 import { STATUS_LABEL } from '../../lib/inn';
+import { adminUrl } from '../../lib/config';
 
 const sp = Astro.url.searchParams;
 const q = (sp.get('q') || '').trim();
@@ -25,7 +26,7 @@ const link = (patch: Record<string, string | null>) => {
   const u = new URLSearchParams(sp);
   for (const [k, v] of Object.entries(patch)) v === null ? u.delete(k) : u.set(k, v);
   const s = u.toString();
-  return '/admin/companies' + (s ? `?${s}` : '');
+  return adminUrl('/companies') + (s ? `?${s}` : '');
 };
 const open = openId ? db.get<any>(`select c.*, ${STAT} from companies c where c.id = ?`, openId) : undefined;
 const contacts = open ? db.all<any>('select * from users where company_id = ? order by id', open.id) : [];
@@ -35,7 +36,7 @@ const docs = open ? db.all<any>('select d.* from documents d join orders o on o.
 <Admin title="Компании" active="companies">
   <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Компании</h1><span class="muted">{rows.length}</span></div>
   <div class="adm-top">
-    <form action="/admin/companies" method="get" style="position: relative; width: 320px; max-width: 100%;" role="search">
+    <form action={adminUrl('/companies')} method="get" style="position: relative; width: 320px; max-width: 100%;" role="search">
       <i class="ic ic-search ic-18 muted" style="position: absolute; left: 12px; top: 11px;"></i><input class="pl-input" name="q" value={q} style="height: 40px; padding-left: 38px; font-size: 14px;" placeholder="Название или ИНН" aria-label="Поиск компании" />
     </form>
   </div>
@@ -81,7 +82,7 @@ const docs = open ? db.all<any>('select d.* from documents d join orders o on o.
         <div class="col g8">
           <span class="pl-field__label">Контактные лица</span>
           {contacts.map((u) => (
-            <a class="row between g12 box-line" href={`/admin/customers?id=${u.id}`} style="padding: 12px 14px;">
+            <a class="row between g12 box-line" href={adminUrl(`/customers?id=${u.id}`)} style="padding: 12px 14px;">
               <span class="col"><b style="font-weight: 600;">{u.name || 'Без имени'}</b><span class="xs muted">{u.email}{u.position && ` · ${u.position}`}</span></span>
               <span class="sm nw">{u.phone ? phoneInput(u.phone) : ''}</span>
             </a>
@@ -90,7 +91,7 @@ const docs = open ? db.all<any>('select d.* from documents d join orders o on o.
         <div class="col g8">
           <span class="pl-field__label">Заказы · {orders.length}</span>
           {orders.length ? orders.map((o) => (
-            <a class="row between g12 box-line" href={`/admin/orders?m=&id=${o.id}`} style="padding: 12px 14px;">
+            <a class="row between g12 box-line" href={adminUrl(`/orders?m=&id=${o.id}`)} style="padding: 12px 14px;">
               <span class="col"><b style="font-weight: 600;">№ {o.id}</b><span class="xs muted">{shortDateTime(o.created_at)} · {o.payment_method === 'invoice' ? 'по счёту' : 'онлайн'}</span></span>
               <span class="row g12"><span class={`pl-badge ${STATUS[o.status].cls}`} style="height: 22px;"><i class={`ic ic-${STATUS[o.status].icon} ic-16`}></i>{STATUS[o.status].label}</span><b class="nw">{rub(o.total)}</b></span>
             </a>

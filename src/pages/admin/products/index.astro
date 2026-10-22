@@ -4,6 +4,7 @@ import { db } from '../../../lib/db';
 import { hydrate, categories, norm, ensureSearch } from '../../../lib/catalog';
 import { imageUrl } from '../../../lib/images';
 import { rub } from '../../../lib/format';
+import { adminUrl } from '../../../lib/config';
 
 ensureSearch();
 const LOW = 10;
@@ -41,15 +42,15 @@ const link = (patch: Record<string, string | null>) => {
   for (const [k, v] of Object.entries(patch)) v ? u.set(k, v) : u.delete(k);
   if (!('page' in patch)) u.delete('page');
   const s = u.toString();
-  return '/admin/products' + (s ? `?${s}` : '');
+  return adminUrl('/products') + (s ? `?${s}` : '');
 };
 const from = total ? (page - 1) * PER + 1 : 0;
 const to = Math.min(total, page * PER);
 ---
 <Admin title="Товары" active="products">
-  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Товары</h1><span class="muted">{allCount}</span><span class="grow"></span><a class="pl-btn pl-btn--primary pl-btn--sm" href="/admin/products/new"><i class="ic ic-plus ic-18"></i>Добавить товар</a></div>
+  <div class="adm-top"><h1 class="t-h3" style="font-size: 26px;">Товары</h1><span class="muted">{allCount}</span><span class="grow"></span><a class="pl-btn pl-btn--primary pl-btn--sm" href={adminUrl('/products/new')}><i class="ic ic-plus ic-18"></i>Добавить товар</a></div>
   <div class="adm-top">
-    <form action="/admin/products" method="get" style="position: relative; width: 320px; max-width: 100%;" role="search">
+    <form action={adminUrl('/products')} method="get" style="position: relative; width: 320px; max-width: 100%;" role="search">
       {f !== 'all' && <input type="hidden" name="f" value={f} />}{cat && <input type="hidden" name="cat" value={cat} />}
       <i class="ic ic-search ic-18 muted" style="position: absolute; left: 12px; top: 11px;"></i><input class="pl-input" name="q" value={q} style="height: 40px; padding-left: 38px; font-size: 14px;" placeholder="Название или артикул" aria-label="Поиск товара" />
     </form>
@@ -71,14 +72,14 @@ const to = Math.min(total, page * PER);
         {rows.map((p) => (
           <tr data-row={p.id}>
             <td><label class="pl-check" aria-label={`Выбрать ${p.name}`}><input type="checkbox" data-pick={p.id} /><span class="pl-check__box"><i class="ic ic-check ic-16" style="color: #fff;"></i></span></label></td>
-            <td class="nm"><a class="row g12" href={`/admin/products/${p.id}`}><span class="tb-img"><img src={imageUrl(p.images[0])} alt="" width="44" height="44" /></span><span class="col"><b style="font-weight: 600;">{p.name}</b><span class="xs muted">{p.variant}</span></span></a></td>
+            <td class="nm"><a class="row g12" href={adminUrl(`/products/${p.id}`)}><span class="tb-img"><img src={imageUrl(p.images[0])} alt="" width="44" height="44" /></span><span class="col"><b style="font-weight: 600;">{p.name}</b><span class="xs muted">{p.variant}</span></span></a></td>
             <td class="nw">{p.category_name || '—'}</td>
             <td class={p.sku ? '' : 'muted'}>{p.sku || '—'}</td>
             <td class={`num ${p.price === null ? 'muted' : ''}`}>{p.price === null ? 'не задана' : rub(p.price)}</td>
             <td class="num muted">{p.old_price ? rub(p.old_price) : '—'}</td>
             <td class="num">{p.stock === 0 ? <span class="muted">0</span> : p.stock < LOW ? <span class="pl-badge pl-badge--discount" style="height: 22px;">{p.stock}</span> : p.stock}</td>
             <td><button class={`pl-toggle ${p.visible ? 'is-on' : ''}`} type="button" role="switch" aria-checked={p.visible ? 'true' : 'false'} aria-label="Показывать на сайте" data-visible={p.id}><span class="pl-toggle__track"></span></button></td>
-            <td><span class="row g4"><a class="act" href={`/admin/products/${p.id}`} aria-label="Редактировать"><i class="ic ic-edit ic-18"></i></a><button class="act" type="button" aria-label="Удалить" data-del={p.id} data-name={p.name}><i class="ic ic-trash ic-18"></i></button></span></td>
+            <td><span class="row g4"><a class="act" href={adminUrl(`/products/${p.id}`)} aria-label="Редактировать"><i class="ic ic-edit ic-18"></i></a><button class="act" type="button" aria-label="Удалить" data-del={p.id} data-name={p.name}><i class="ic ic-trash ic-18"></i></button></span></td>
           </tr>
         ))}
         {!rows.length && <tr><td colspan="9" class="muted" style="padding: 32px 16px; text-align: center;">Товаров не найдено</td></tr>}

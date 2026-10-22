@@ -6,6 +6,7 @@ import '../styles/screens.css';
 import '../styles/site.css';
 import { db } from '../lib/db';
 import { hasFont } from '../lib/fonts';
+import { adminUrl } from '../lib/config';
 
 interface Props {
   title: string;
@@ -35,20 +36,20 @@ const me = Astro.locals.user;
       </style>
     )}
   </head>
-  <body>
+  <body data-admin={adminUrl()}>
     <div class="adm" style="flex-wrap: wrap;">
       <aside class="adm-side">
-        <a class="logo" href="/admin" style="padding: 4px 16px 20px;"><img src="/images/logo.png" alt="" width="24" height="21" />PALADA<span class="xs muted" style="font-weight: 400; letter-spacing: 0;">admin</span></a>
-        <a class={`side-a ${active === 'dashboard' ? 'on' : ''}`} href="/admin"><i class="ic ic-home ic-20"></i>Обзор</a>
-        <a class={`side-a ${active === 'orders' ? 'on' : ''}`} href="/admin/orders"><i class="ic ic-box ic-20"></i>Заказы{newOrders > 0 && <span class="pl-badge pl-badge--accent" style="margin-left: auto; height: 22px; padding: 0 8px;">{newOrders} {newOrders === 1 ? 'новый' : 'новых'}</span>}</a>
-        <a class={`side-a ${active === 'products' ? 'on' : ''}`} href="/admin/products"><i class="ic ic-grid ic-20"></i>Товары<span class="n">{productsCount}</span></a>
-        <a class={`side-a ${active === 'categories' ? 'on' : ''}`} href="/admin/categories"><i class="ic ic-tag ic-20"></i>Категории</a>
-        <a class={`side-a ${active === 'customers' ? 'on' : ''}`} href="/admin/customers"><i class="ic ic-user ic-20"></i>Клиенты<span class="n">{customersCount}</span></a>
-        <a class={`side-a ${active === 'companies' ? 'on' : ''}`} href="/admin/companies"><i class="ic ic-store ic-20"></i>Компании<span class="n">{companiesCount}</span></a>
-        <a class={`side-a ${active === 'promos' ? 'on' : ''}`} href="/admin/promos"><i class="ic ic-percent ic-20"></i>Промокоды</a>
+        <a class="logo" href={adminUrl()} style="padding: 4px 16px 20px;"><img src="/images/logo.png" alt="" width="24" height="21" />PALADA<span class="xs muted" style="font-weight: 400; letter-spacing: 0;">admin</span></a>
+        <a class={`side-a ${active === 'dashboard' ? 'on' : ''}`} href={adminUrl()}><i class="ic ic-home ic-20"></i>Обзор</a>
+        <a class={`side-a ${active === 'orders' ? 'on' : ''}`} href={adminUrl('/orders')}><i class="ic ic-box ic-20"></i>Заказы{newOrders > 0 && <span class="pl-badge pl-badge--accent" style="margin-left: auto; height: 22px; padding: 0 8px;">{newOrders} {newOrders === 1 ? 'новый' : 'новых'}</span>}</a>
+        <a class={`side-a ${active === 'products' ? 'on' : ''}`} href={adminUrl('/products')}><i class="ic ic-grid ic-20"></i>Товары<span class="n">{productsCount}</span></a>
+        <a class={`side-a ${active === 'categories' ? 'on' : ''}`} href={adminUrl('/categories')}><i class="ic ic-tag ic-20"></i>Категории</a>
+        <a class={`side-a ${active === 'customers' ? 'on' : ''}`} href={adminUrl('/customers')}><i class="ic ic-user ic-20"></i>Клиенты<span class="n">{customersCount}</span></a>
+        <a class={`side-a ${active === 'companies' ? 'on' : ''}`} href={adminUrl('/companies')}><i class="ic ic-store ic-20"></i>Компании<span class="n">{companiesCount}</span></a>
+        <a class={`side-a ${active === 'promos' ? 'on' : ''}`} href={adminUrl('/promos')}><i class="ic ic-percent ic-20"></i>Промокоды</a>
         <div class="hr" style="margin: 8px 0;"></div>
-        <a class={`side-a ${active === 'team' ? 'on' : ''}`} href="/admin/team"><i class="ic ic-shield ic-20"></i>Администраторы</a>
-        <a class={`side-a ${active === 'settings' ? 'on' : ''}`} href="/admin/settings"><i class="ic ic-edit ic-20"></i>Настройки</a>
+        <a class={`side-a ${active === 'team' ? 'on' : ''}`} href={adminUrl('/team')}><i class="ic ic-shield ic-20"></i>Администраторы</a>
+        <a class={`side-a ${active === 'settings' ? 'on' : ''}`} href={adminUrl('/settings')}><i class="ic ic-edit ic-20"></i>Настройки</a>
         <span class="grow"></span>
         <div class="hr" style="margin: 8px 0;"></div>
         {me && <span class="xs muted" style="padding: 0 16px 4px; overflow: hidden; text-overflow: ellipsis;">{me.email}</span>}

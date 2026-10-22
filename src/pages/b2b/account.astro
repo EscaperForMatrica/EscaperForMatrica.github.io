@@ -5,6 +5,7 @@ import { userOrders, STATUS, documentsFor, DOC_LABEL, itemsCount, positionsCount
 import { rub, dayMonth, dateDots, phoneInput, plural } from '../../lib/format';
 import { favCount } from '../../lib/favorites';
 import { db } from '../../lib/db';
+import { adminUrl } from '../../lib/config';
 
 const { user, company } = Astro.locals;
 if (!user) return Astro.redirect('/login?next=/b2b/account');
@@ -33,7 +34,7 @@ const shortAddr = (o: any) => (o.delivery_type === 'ozon' && o.city ? `г. ${o.c
           <a class={`side-a ${tab === 'company' ? 'on' : ''}`} href="/b2b/account?tab=company"><i class="ic ic-store ic-20"></i>Реквизиты компании</a>
           <a class={`side-a ${tab === 'contact' ? 'on' : ''}`} href="/b2b/account?tab=contact"><i class="ic ic-user ic-20"></i>Контактное лицо</a>
           <a class="side-a" href="/favorites"><i class="ic ic-heart ic-20"></i>Избранное{favs > 0 && <span class="n">{favs}</span>}</a>
-          {user.role === 'admin' && <a class="side-a" href="/admin"><i class="ic ic-edit ic-20"></i>Админка</a>}
+          {user.role === 'admin' && <a class="side-a" href={adminUrl()}><i class="ic ic-edit ic-20"></i>Админка</a>}
         </nav>
         <div class="hr" style="margin: 8px 0;"></div>
         <form method="post" action="/api/auth/logout"><button class="side-a" type="submit" style="color: var(--ink-muted);"><i class="ic ic-logout ic-20"></i>Выйти</button></form>

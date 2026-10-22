@@ -1,11 +1,12 @@
 ---
 import Shop from '../layouts/Shop.astro';
 import OtpStep from '../components/OtpStep.astro';
+import { config } from '../lib/config';
 
 const next = Astro.url.searchParams.get('next') || '';
 const user = Astro.locals.user;
-// Покупатель, открывший админку, остаётся на форме входа: иначе /admin и /login отправляют друг к другу по кругу
-const denied = Boolean(user && next.startsWith('/admin') && user.role !== 'admin');
+// Покупатель, открывший ссылку админки, остаётся на форме входа: иначе админка и /login отправляют друг к другу по кругу
+const denied = Boolean(user && next.startsWith(config.adminPath) && user.role !== 'admin');
 if (user && !denied) return Astro.redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/account');
 const email = Astro.url.searchParams.get('email') || '';
 ---

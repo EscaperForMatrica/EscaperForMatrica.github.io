@@ -1,4 +1,4 @@
-import { shop, config } from './config';
+import { shop, config, adminUrl } from './config';
 import { getOrder, orderItems, PAY_METHOD } from './orders';
 import { rub } from './format';
 import { sendMailLater } from './mailer';
@@ -23,7 +23,7 @@ export function notifyOrderPaid(orderId: number) {
     sendMailLater({
       to,
       subject: `Новый заказ № ${o.id} на ${rub(o.total)}`,
-      lines: [`${o.name}, ${o.email}${o.phone ? `, +${o.phone}` : ''}`, `Оплата: ${PAY_METHOD[o.payment_method] || o.payment_method}`, ...items, delivery(o), `${site()}/admin/orders?m=&id=${o.id}`],
+      lines: [`${o.name}, ${o.email}${o.phone ? `, +${o.phone}` : ''}`, `Оплата: ${PAY_METHOD[o.payment_method] || o.payment_method}`, ...items, delivery(o), `${site()}${adminUrl(`/orders?m=&id=${o.id}`)}`],
     });
   }
 }
@@ -47,6 +47,6 @@ export function notifyInvoice(orderId: number) {
     lines: [`Счёт № ${o.id} на оплату оптового заказа выставлен. Заказ уйдёт в сборку после поступления оплаты.`, `${site()}/b2b/invoice/${o.id}`],
   });
   for (const to of shopEmails()) {
-    sendMailLater({ to, subject: `Выставлен счёт № ${o.id} на ${rub(o.total)}`, lines: [`${o.name}, ${o.email}`, `${site()}/admin/orders?m=&id=${o.id}`] });
+    sendMailLater({ to, subject: `Выставлен счёт № ${o.id} на ${rub(o.total)}`, lines: [`${o.name}, ${o.email}`, `${site()}${adminUrl(`/orders?m=&id=${o.id}`)}`] });
   }
 }

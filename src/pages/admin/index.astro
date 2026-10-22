@@ -4,6 +4,7 @@ import { db } from '../../lib/db';
 import { PERIODS, summary, revenueSeries, attention, topProducts, delta, niceMax, compact } from '../../lib/stats';
 import { STATUS, type Order } from '../../lib/orders';
 import { rub, num, shortDateTime, shortName } from '../../lib/format';
+import { adminUrl } from '../../lib/config';
 
 const pKey = PERIODS[Astro.url.searchParams.get('p') || ''] ? (Astro.url.searchParams.get('p') as string) : '30';
 const period = PERIODS[pKey];
@@ -25,11 +26,11 @@ const kpis = [
   { label: 'Новые клиенты', value: num(s.customers), d: delta(s.customers, s.prev.customers) },
 ];
 const todo = [
-  { n: att.toAssemble, label: 'Оплачены — ждут сборки', href: '/admin/orders?s=paid&m=', icon: 'box' },
-  { n: att.noTrack, label: 'Без трек-номера', href: '/admin/orders?m=', icon: 'truck' },
-  { n: att.invoices, label: 'Счета ждут оплаты', href: '/admin/orders?s=pending&m=', icon: 'doc' },
-  { n: att.pvz, label: 'Ждут в ПВЗ', href: '/admin/orders?s=pvz&m=', icon: 'store' },
-  { n: att.lowStock, label: 'Заканчиваются товары', href: '/admin/products?f=low', icon: 'alert' },
+  { n: att.toAssemble, label: 'Оплачены — ждут сборки', href: adminUrl('/orders?s=paid&m='), icon: 'box' },
+  { n: att.noTrack, label: 'Без трек-номера', href: adminUrl('/orders?m='), icon: 'truck' },
+  { n: att.invoices, label: 'Счета ждут оплаты', href: adminUrl('/orders?s=pending&m='), icon: 'doc' },
+  { n: att.pvz, label: 'Ждут в ПВЗ', href: adminUrl('/orders?s=pvz&m='), icon: 'store' },
+  { n: att.lowStock, label: 'Заканчиваются товары', href: adminUrl('/products?f=low'), icon: 'alert' },
 ];
 ---
 <Admin title="Обзор" active="dashboard">
@@ -37,7 +38,7 @@ const todo = [
     <h1 class="t-h3" style="font-size: 26px;">Обзор</h1>
     <span class="grow"></span>
     <div class="seg" style="width: 300px;" role="tablist" aria-label="Период">
-      {Object.entries(PERIODS).map(([k, v]) => <a class={k === pKey ? 'on' : ''} href={`/admin?p=${k}`} aria-current={k === pKey ? 'page' : undefined}>{v.label}</a>)}
+      {Object.entries(PERIODS).map(([k, v]) => <a class={k === pKey ? 'on' : ''} href={adminUrl(`?p=${k}`)} aria-current={k === pKey ? 'page' : undefined}>{v.label}</a>)}
     </div>
   </div>
 
@@ -95,14 +96,14 @@ const todo = [
 
   <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
     <section class="col g12" style="flex: 1 1 420px; min-width: 0;">
-      <div class="row between"><h2 class="t-h4">Последние заказы</h2><a class="sm link" href="/admin/orders?m=">Все заказы</a></div>
+      <div class="row between"><h2 class="t-h4">Последние заказы</h2><a class="sm link" href={adminUrl('/orders?m=')}>Все заказы</a></div>
       <div class="tbl-box">
         <table class="tbl">
           <thead><tr><th>№</th><th>Покупатель</th><th class="num">Сумма</th><th>Статус</th></tr></thead>
           <tbody>
             {recent.map((o) => (
-              <tr class="is-click" data-href={`/admin/orders?m=&id=${o.id}`}>
-                <td><a href={`/admin/orders?m=&id=${o.id}`} style="font-weight: 600;">{o.id}</a><br /><span class="xs muted">{shortDateTime(o.created_at)}</span></td>
+              <tr class="is-click" data-href={adminUrl(`/orders?m=&id=${o.id}`)}>
+                <td><a href={adminUrl(`/orders?m=&id=${o.id}`)} style="font-weight: 600;">{o.id}</a><br /><span class="xs muted">{shortDateTime(o.created_at)}</span></td>
                 <td>{o.company_name || shortName(o.name) || '—'}</td>
                 <td class="num">{rub(o.total)}</td>
                 <td><span class={`pl-badge ${STATUS[o.status].cls}`}><i class={`ic ic-${STATUS[o.status].icon} ic-16`}></i>{STATUS[o.status].label}</span></td>
@@ -114,12 +115,12 @@ const todo = [
       </div>
     </section>
     <section class="col g12" style="flex: 1 1 360px; min-width: 0;">
-      <div class="row between"><h2 class="t-h4">Лидеры продаж · {period.label}</h2><a class="sm link" href="/admin/products">Товары</a></div>
+      <div class="row between"><h2 class="t-h4">Лидеры продаж · {period.label}</h2><a class="sm link" href={adminUrl('/products')}>Товары</a></div>
       <div class="tbl-box">
         <table class="tbl">
           <thead><tr><th>Товар</th><th class="num">Шт.</th><th class="num">Выручка</th></tr></thead>
           <tbody>
-            {top.map((t) => <tr><td>{t.product_id ? <a href={`/admin/products/${t.product_id}`}>{t.name}</a> : t.name}<br /><span class="xs muted">{t.variant}</span></td><td class="num">{num(t.qty)}</td><td class="num">{rub(t.revenue)}</td></tr>)}
+            {top.map((t) => <tr><td>{t.product_id ? <a href={adminUrl(`/products/${t.product_id}`)}>{t.name}</a> : t.name}<br /><span class="xs muted">{t.variant}</span></td><td class="num">{num(t.qty)}</td><td class="num">{rub(t.revenue)}</td></tr>)}
             {!top.length && <tr><td colspan="3" class="muted" style="text-align: center; padding: 24px;">Продаж за период нет</td></tr>}
           </tbody>
         </table>

@@ -2,6 +2,7 @@
 import { displayName } from '../lib/format';
 import { orderCounts } from '../lib/orders';
 import { favCount } from '../lib/favorites';
+import { adminUrl } from '../lib/config';
 
 interface Props {
   active: 'orders' | 'profile' | 'favs';
@@ -16,7 +17,7 @@ const favs = favCount(Astro.locals);
   <a class={`side-a ${active === 'orders' ? 'on' : ''}`} href="/account/orders"><i class="ic ic-box ic-20"></i>Мои заказы{counts.all > 0 && <span class="n">{counts.all}</span>}</a>
   <a class={`side-a ${active === 'profile' ? 'on' : ''}`} href="/account/profile"><i class="ic ic-user ic-20"></i>Профиль</a>
   <a class={`side-a ${active === 'favs' ? 'on' : ''}`} href="/favorites"><i class="ic ic-heart ic-20"></i>Избранное{favs > 0 && <span class="n">{favs}</span>}</a>
-  {u.role === 'admin' && <a class="side-a" href="/admin"><i class="ic ic-edit ic-20"></i>Админка</a>}
+  {u.role === 'admin' && <a class="side-a" href={adminUrl()}><i class="ic ic-edit ic-20"></i>Админка</a>}
   <div class="hr" style="margin: 8px 0;"></div>
   <form method="post" action="/api/auth/logout"><button class="side-a" type="submit" style="color: var(--ink-muted);"><i class="ic ic-logout ic-20"></i>Выйти</button></form>
 </aside>
