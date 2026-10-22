@@ -1,5 +1,6 @@
-# Публикация демо-версии магазина на GitHub Pages.
-# Сервер магазина собирается в service worker (scripts/build-pages.mjs) и работает в браузере посетителя.
+# GitHub Pages: магазин переехал на https://palada.shop, здесь только переадресация (папка pages-redirect).
+# Её sw.js снимает прежний service worker демо у тех, кто открывал демо раньше.
+# Демо-сборка по-прежнему собирается командой npm run build:pages, но не публикуется.
 name: Deploy to GitHub Pages
 
 on:
@@ -21,17 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run fonts
-      - run: npm run build:pages
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: dist-pages/client
+          path: pages-redirect
 
   deploy:
     needs: build
