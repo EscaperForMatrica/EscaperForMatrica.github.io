@@ -1,6 +1,4 @@
 ---
-import fs from 'node:fs';
-import path from 'node:path';
 import '../styles/tokens.css';
 import '../styles/components.css';
 import '../styles/icons.css';
@@ -10,6 +8,7 @@ import Header, { type HeaderKind } from '../components/Header.astro';
 import MobileHeader, { type MobileHeaderSpec } from '../components/MobileHeader.astro';
 import Footer from '../components/Footer.astro';
 import { shop, config } from '../lib/config';
+import { hasFont } from '../lib/fonts';
 import { cartCount } from '../lib/cart';
 import { cartMode } from '../lib/session';
 
@@ -62,9 +61,6 @@ const cookieOk = Astro.cookies.get('cookie_ok')?.value === '1';
 const showCookie = cookie && !cookieOk;
 const fullTitle = title === 'PALADA' ? 'PALADA — бытовая химия напрямую с завода' : `${title} — PALADA`;
 
-// Tilda Sans подключается, только если шрифт лежит в public/fonts (см. README)
-const fontsDir = path.resolve(process.cwd(), 'public/fonts');
-const hasFont = fs.existsSync(path.join(fontsDir, 'TildaSans-Regular.woff2'));
 const canonical = config.siteUrl ? config.siteUrl + Astro.url.pathname : undefined;
 const pageCls = ['page', pageClass, showTab ? 'has-tab' : '', showCookie ? 'cookie-open' : ''].filter(Boolean).join(' ');
 ---

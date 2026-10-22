@@ -4,9 +4,8 @@ import '../styles/components.css';
 import '../styles/icons.css';
 import '../styles/screens.css';
 import '../styles/site.css';
-import fs from 'node:fs';
-import path from 'node:path';
 import { db } from '../lib/db';
+import { hasFont } from '../lib/fonts';
 
 interface Props {
   title: string;
@@ -18,7 +17,6 @@ const newOrders = db.value<number>(`select count(*) from orders where status = '
 const customersCount = db.value<number>(`select count(*) from users where role != 'admin'`) || 0;
 const companiesCount = db.value<number>('select count(*) from companies') || 0;
 const me = Astro.locals.user;
-const hasFont = fs.existsSync(path.resolve(process.cwd(), 'public/fonts/TildaSans-Regular.woff2'));
 ---
 <!doctype html>
 <html lang="ru">
