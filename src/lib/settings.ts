@@ -24,7 +24,7 @@ export const SETTING_DEFS: SettingDef[] = [
   { key: 'bik', label: 'БИК', group: 'bank' },
   { key: 'corrAccount', label: 'Корр. счёт', group: 'bank' },
   { key: 'account', label: 'Расчётный счёт', group: 'bank' },
-  { key: 'notifyEmail', label: 'Почта для уведомлений о заказах', group: 'notify', placeholder: 'orders@palada.su', hint: 'Сюда придёт письмо о каждом оплаченном заказе и выставленном счёте' },
+  { key: 'notifyEmail', label: 'Почта для уведомлений о заказах', group: 'notify', placeholder: 'orders@palada.shop', hint: 'Сюда придёт письмо о каждом оплаченном заказе и выставленном счёте' },
 ];
 
 const DEFAULTS: Partial<ShopInfo> = { ...shop };

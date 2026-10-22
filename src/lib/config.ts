@@ -47,13 +47,13 @@ export const config = {
   dadataKey: env('DADATA_API_KEY'),
 };
 
-/** Контакты и реквизиты — из макетов (palada.su). */
+/** Контакты и реквизиты — из макетов; сайт магазина — palada.shop. */
 export const shop = {
   name: 'PALADA',
   legalName: 'ООО «АРМ»',
   inn: '0608050414',
   ogrn: '1180608003410',
-  domain: 'palada.su',
+  domain: 'palada.shop',
   wholesalePhone: '8 (928) 021-19-49',
   wholesaleTel: '89280211949',
   supportPhone: '+7 918 818-17-22',

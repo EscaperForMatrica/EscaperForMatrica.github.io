@@ -28,9 +28,11 @@ export default defineConfig({
     checkOrigin: !pages,
     // За прокси хостинга (nginx → Apache → Passenger) доверяем X-Forwarded-Host/Proto только для своих доменов
     allowedDomains: [
+      { hostname: 'palada.shop', protocol: 'https' },
+      { hostname: 'www.palada.shop', protocol: 'https' },
       { hostname: 'palada.su', protocol: 'https' },
       { hostname: 'www.palada.su', protocol: 'https' },
-      ...(siteHost && !siteHost.endsWith('palada.su') ? [{ hostname: siteHost, protocol: 'https' }] : []),
+      ...(siteHost && !/(^|\.)palada\.(shop|su)$/.test(siteHost) ? [{ hostname: siteHost, protocol: 'https' }] : []),
     ],
   },
   vite: {
