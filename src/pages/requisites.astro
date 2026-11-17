@@ -1,0 +1,26 @@
+import Shop from '../layouts/Shop.astro';
+import { shop } from '../lib/config';
+
+const publicEmail = 'info@palada.shop';
+---
+<Shop title="Реквизиты продавца" description={`${shop.legalName}, ИНН ${shop.inn}, ОГРН ${shop.ogrn}. Контакты продавца PALADA.`}>
+  <main class="wrap" style="padding-bottom: 64px;">
+    <nav class="crumbs"><a href="/">Главная</a><i class="ic ic-chev-r"></i><span>Реквизиты продавца</span></nav>
+    <section class="box col g24" style="max-width: 760px; padding: 32px; margin: 32px auto;">
+      <div class="col g8">
+        <span class="kicker"><i class="ic ic-store ic-18"></i>Интернет-магазин PALADA</span>
+        <h1 class="t-h2">Реквизиты продавца</h1>
+      </div>
+      <div class="col g12">
+        <div class="sum-row"><span class="muted">Полное наименование</span><b>{shop.legalName}</b></div>
+        <div class="sum-row"><span class="muted">ИНН</span><b>{shop.inn}</b></div>
+        <div class="sum-row"><span class="muted">ОГРН</span><b>{shop.ogrn}</b></div>
+        <div class="sum-row"><span class="muted">Телефон</span><a class="link" href={`tel:${shop.supportTel}`}>{shop.supportPhone}</a></div>
+        <div class="sum-row"><span class="muted">Электронная почта</span><a class="link" href={`mailto:${publicEmail}`}>{publicEmail}</a></div>
+        <div class="sum-row"><span class="muted">Сайт</span><a class="link" href="https://palada.shop">palada.shop</a></div>
+      </div>
+      <div class="hr"></div>
+      <p class="sm muted">Информация о товарах, оформлении заказа и доставке доступна в <a class="link" href="/catalog">каталоге</a> и при оформлении заказа. Доставка — в пункты выдачи Ozon и Wildberries.</p>
+    </section>
+  </main>
+</Shop>
